@@ -247,16 +247,105 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
             raise HTTPException(status_code=404, detail="Session not found")
         return result
 
-    @app.get("/api/admin/export")
-    def export(password: str) -> Response:
+    def require_admin(password: str) -> None:
         if password != password_value:
             raise HTTPException(status_code=401, detail="Invalid password")
+
+    @app.get("/api/admin/export")
+    def export(password: str) -> Response:
+        require_admin(password)
         content = build_export_workbook(db.all_rows())
         return Response(
             content,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={"Content-Disposition": 'attachment; filename="questionnaire_export.xlsx"'},
         )
+
+    @app.get("/api/admin/sessions")
+    def admin_list(password: str, include_abandoned: bool = False) -> list[dict[str, Any]]:
+        require_admin(password)
+        from .database import decode_json, seconds_between
+        from .scoring import check_response_pattern, check_timing
+        sessions = db.admin_list_sessions(include_abandoned)
+        result = []
+        for s in sessions:
+            row = db.admin_get_session(s["id"])
+            answers: dict[str, str] = {}
+            for r in row["responses"]:
+                answers.update(decode_json(r["answers_json"]))
+            scores = score_answers(answers)
+            task_durations = {
+                tid: seconds_between(
+                    row["starts"].get(tid, {}).get("started_at"),
+                    next((r["submitted_at"] for r in row["responses"] if r["task_id"] == tid), None),
+                )
+                for tid in range(1, 7)
+            }
+            total_sec = seconds_between(s["created_at"], s["completed_at"])
+            flags = check_timing(task_durations, total_sec) + (check_response_pattern(answers) if answers else [])
+            result.append({
+                "session_id": s["id"],
+                "participant_id": s["participant_id"],
+                "group": s["group_name"],
+                "status": "complete" if s["completed_at"] else "abandoned" if s["abandoned_at"] else "in_progress",
+                "current_task": s["current_task"],
+                "created_at": s["created_at"],
+                "completed_at": s["completed_at"],
+                "abandoned_at": s["abandoned_at"],
+                "total_score": scores["total_score"],
+                "valid": len(flags) == 0,
+                "quality_flags": flags,
+            })
+        return result
+
+    @app.get("/api/admin/sessions/{session_id}")
+    def admin_get(session_id: str, password: str) -> dict[str, Any]:
+        require_admin(password)
+        from .database import decode_json
+        row = db.admin_get_session(session_id)
+        if not row:
+            raise HTTPException(status_code=404, detail="Session not found")
+        s = row["session"]
+        pretest = decode_json(s["pretest_json"])
+        posttest = decode_json(s["posttest_json"])
+        answers: dict[str, str] = {}
+        supervision: dict[str, str] = {}
+        for r in row["responses"]:
+            answers.update(decode_json(r["answers_json"]))
+            supervision.update(decode_json(r["supervision_json"]))
+        scores = score_answers(answers)
+        sup_scores = score_supervision(supervision)
+        return {
+            "session": dict(s),
+            "pretest": pretest,
+            "posttest": posttest,
+            "answers": answers,
+            "supervision": supervision,
+            "scores": {k: v for k, v in scores.items() if k != "per_question"},
+            "supervision_scores": {k: v for k, v in sup_scores.items() if k != "per_item"},
+            "responses": row["responses"],
+        }
+
+    @app.delete("/api/admin/sessions/{session_id}")
+    def admin_delete(session_id: str, password: str) -> dict[str, Any]:
+        require_admin(password)
+        if not db.admin_delete_session(session_id):
+            raise HTTPException(status_code=404, detail="Session not found or already abandoned")
+        return {"ok": True}
+
+    @app.patch("/api/admin/sessions/{session_id}")
+    def admin_update(session_id: str, password: str, body: dict[str, Any]) -> dict[str, Any]:
+        require_admin(password)
+        if not db.admin_update_session(session_id, body):
+            raise HTTPException(status_code=400, detail="No valid fields to update")
+        return {"ok": True}
+
+    @app.post("/api/admin/sessions/{session_id}/restore")
+    def admin_restore(session_id: str, password: str) -> dict[str, Any]:
+        require_admin(password)
+        if not db.admin_restore_session(session_id):
+            raise HTTPException(status_code=404, detail="Session not found")
+        return {"ok": True}
 
     password_value = password
     app.mount("/", StaticFiles(directory=base_dir / "static", html=True), name="static")

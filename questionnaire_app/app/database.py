@@ -176,6 +176,55 @@ class Database:
             )
         return {"complete": True}
 
+    def admin_list_sessions(self, include_abandoned: bool = False) -> list[dict[str, Any]]:
+        where = "" if include_abandoned else "WHERE abandoned_at IS NULL"
+        with self.connect() as conn:
+            rows = conn.execute(f"SELECT * FROM sessions {where} ORDER BY created_at DESC").fetchall()
+        return [dict(row) for row in rows]
+
+    def admin_get_session(self, session_id: str) -> dict[str, Any] | None:
+        with self.connect() as conn:
+            session = conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,)).fetchone()
+            if not session:
+                return None
+            starts = conn.execute("SELECT * FROM task_starts WHERE session_id = ?", (session_id,)).fetchall()
+            responses = conn.execute(
+                "SELECT * FROM task_responses WHERE session_id = ? ORDER BY task_id", (session_id,)
+            ).fetchall()
+        return {
+            "session": dict(session),
+            "starts": {row["task_id"]: dict(row) for row in starts},
+            "responses": [dict(r) for r in responses],
+        }
+
+    def admin_delete_session(self, session_id: str) -> bool:
+        with self.connect() as conn:
+            result = conn.execute(
+                "UPDATE sessions SET abandoned_at = ? WHERE id = ? AND abandoned_at IS NULL",
+                (utc_now(), session_id),
+            )
+        return result.rowcount > 0
+
+    def admin_update_session(self, session_id: str, updates: dict[str, Any]) -> bool:
+        allowed = {"group_name", "current_task"}
+        fields = {k: v for k, v in updates.items() if k in allowed}
+        if not fields:
+            return False
+        set_clause = ", ".join(f"{k} = ?" for k in fields)
+        with self.connect() as conn:
+            result = conn.execute(
+                f"UPDATE sessions SET {set_clause} WHERE id = ?",
+                (*fields.values(), session_id),
+            )
+        return result.rowcount > 0
+
+    def admin_restore_session(self, session_id: str) -> bool:
+        with self.connect() as conn:
+            result = conn.execute(
+                "UPDATE sessions SET abandoned_at = NULL WHERE id = ?", (session_id,)
+            )
+        return result.rowcount > 0
+
     def all_rows(self) -> list[dict[str, Any]]:
         with self.connect() as conn:
             sessions = conn.execute(
