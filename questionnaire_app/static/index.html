@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Supervision Questionnaire</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="topbar">
+        <div>
+          <p class="eyebrow" data-i18n="eyebrow">Research Questionnaire</p>
+          <h1 data-i18n="title">AI Code Supervision Study</h1>
+        </div>
+        <div class="top-actions">
+          <button class="ghost" id="resetHome" type="button" data-i18n="resetHome">New Session</button>
+          <button class="ghost" id="languageToggle" type="button">中文</button>
+          <div class="progress" id="progressLabel">Pretest</div>
+        </div>
+      </section>
+
+      <p class="network-status" id="networkStatus"></p>
+      <section id="view" class="panel"></section>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,45 @@
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_task_page_renders_supervision_card_between_description_and_questions():
+    app_js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+    form_template_start = app_js.index('view.innerHTML = `\n    <form id="taskForm"')
+    form_template_end = app_js.index('const form = document.getElementById("taskForm");')
+    task_template = app_js[form_template_start:form_template_end]
+
+    description_index = task_template.index('<ol class="requirements">${task.requirements')
+    supervision_index = task_template.index("${supervision}")
+    questions_index = task_template.index('<section class="task-block">${questions}</section>')
+
+    assert description_index < supervision_index < questions_index
+
+
+def test_home_reset_entry_clears_session_and_cached_submission():
+    index_html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
+    app_js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+
+    assert 'id="resetHome"' in index_html
+    assert "function resetToHome" in app_js
+    assert 'api("/api/session/reset", { method: "POST" })' in app_js
+    assert 'localStorage.removeItem("questionnaire_pending_submit")' in app_js
+    assert "questionnaire_session_id" not in app_js
+
+
+def test_frontend_resumes_from_server_current_session_endpoint():
+    app_js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+
+    assert "async function bootstrapSession" in app_js
+    assert 'api("/api/session/current")' in app_js
+
+
+def test_frontend_scrolls_to_first_unanswered_required_group():
+    app_js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+    styles = (ROOT / "static" / "styles.css").read_text(encoding="utf-8")
+
+    assert "function validateRequiredRadioGroups" in app_js
+    assert "scrollIntoView" in app_js
+    assert "unanswered" in app_js
+    assert ".question.unanswered" in styles

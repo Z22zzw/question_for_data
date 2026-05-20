@@ -1,0 +1,10 @@
+node_modules/
+dist/
+tmp/
+.env
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.sqlite
+.claude/

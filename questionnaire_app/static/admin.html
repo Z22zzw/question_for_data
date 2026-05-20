@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Questionnaire Admin</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell narrow">
+      <section class="topbar">
+        <div>
+          <p class="eyebrow">Admin</p>
+          <h1>Export Responses</h1>
+        </div>
+      </section>
+      <section class="panel">
+        <label class="field">
+          <span>Admin password</span>
+          <input id="password" type="password" autocomplete="current-password" />
+        </label>
+        <button class="primary" id="download">Download Excel</button>
+        <p class="status" id="status"></p>
+      </section>
+    </main>
+    <script>
+      document.getElementById("download").addEventListener("click", async () => {
+        const password = document.getElementById("password").value;
+        const status = document.getElementById("status");
+        status.textContent = "";
+        const response = await fetch(`/api/admin/export?password=${encodeURIComponent(password)}`);
+        if (!response.ok) {
+          status.textContent = "Invalid password or export failed.";
+          return;
+        }
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "questionnaire_export.xlsx";
+        link.click();
+        URL.revokeObjectURL(url);
+      });
+    </script>
+  </body>
+</html>
