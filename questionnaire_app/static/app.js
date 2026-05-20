@@ -38,7 +38,7 @@ const i18n = {
       major: "Major",
       programming_experience_years: "Programming Experience",
       python_familiarity: "Python Proficiency",
-      file_io_familiarity: "File Reading/Writing Experience",
+      file_io_familiarity: "Academic Reading/Writing Ability",
       numpy_familiarity: "NumPy Proficiency",
       ai_tool_use_frequency: "AI Tool Use Frequency",
       ai_code_review_experience: "AI Code Review Experience",
@@ -77,7 +77,7 @@ const i18n = {
       major: "专业",
       programming_experience_years: "编程经验",
       python_familiarity: "Python 掌握程度",
-      file_io_familiarity: "文件读写操作经验",
+      file_io_familiarity: "撰写/阅读文献能力",
       numpy_familiarity: "NumPy 掌握程度",
       ai_tool_use_frequency: "AI 工具使用频率",
       ai_code_review_experience: "AI 代码审查经验",
@@ -107,8 +107,8 @@ const optionLabels = {
     values: ["1", "2", "3", "4", "5"],
   },
   file_io_familiarity: {
-    en: ["Never read/written files in code", "Read simple files occasionally", "Comfortable with common file operations", "Proficient with various file formats", "Expert in file I/O and data pipelines"],
-    zh: ["从未用代码读写过文件", "偶尔读取简单文件", "能处理常见文件操作", "熟练处理多种文件格式", "精通文件读写与数据流处理"],
+    en: ["Never read/written academic papers", "Occasionally read papers or reports", "Comfortable reading and summarizing literature", "Proficient in literature review and academic writing", "Expert in academic research writing and synthesis"],
+    zh: ["从未阅读或撰写过学术文献", "偶尔阅读论文或报告", "能阅读并归纳文献内容", "熟练进行文献综述与学术写作", "精通学术研究写作与文献整合"],
     values: ["1", "2", "3", "4", "5"],
   },
   numpy_familiarity: {
