@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from .database import Database, decode_json
 from .export import build_export_workbook
 from .questionnaire import POSTTEST_FIELDS, PRETEST_FIELDS, localized_task, posttest_schema, task_question_ids
-from .scoring import score_answers, score_supervision
+from .scoring import check_response_pattern, check_timing, score_answers, score_supervision
 
 SESSION_COOKIE_NAME = "questionnaire_session"
 SESSION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 7
@@ -86,6 +86,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         return session_id
 
     def summarize_session(session_id: str) -> dict[str, Any]:
+        from .database import seconds_between
         rows = [row for row in db.all_rows() if row["session"]["id"] == session_id]
         if not rows:
             return {"status": "none"}
@@ -99,6 +100,21 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         supervision_scores = score_supervision(supervision)
         posttest_ready = row["session"]["current_task"] > 6 and not row["session"]["posttest_submitted_at"]
         complete = bool(row["session"]["completed_at"])
+
+        # Compute per-task durations and total duration for quality checks
+        task_durations: dict[int, int | None] = {}
+        for task_id in range(1, 7):
+            start_row = row["starts"].get(task_id)
+            resp = next((r for r in row["responses"] if r["task_id"] == task_id), None)
+            task_durations[task_id] = seconds_between(
+                start_row["started_at"] if start_row else None,
+                resp["submitted_at"] if resp else None,
+            )
+        total_seconds = seconds_between(row["session"]["created_at"], row["session"]["completed_at"])
+        timing_flags = check_timing(task_durations, total_seconds)
+        pattern_flags = check_response_pattern(answers) if answers else []
+        quality_flags = timing_flags + pattern_flags
+
         return {
             "status": "complete" if complete else "posttest" if posttest_ready else "in_progress",
             "participant_id": row["session"]["participant_id"],
@@ -106,6 +122,8 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
             "next_stage": None if complete else "posttest" if posttest_ready else "task",
             "scores": {key: value for key, value in formal.items() if key != "per_question"},
             "supervision_scores": {key: value for key, value in supervision_scores.items() if key != "per_item"},
+            "quality_flags": quality_flags,
+            "valid": len(quality_flags) == 0,
         }
 
     def read_task_for_session(session_id: str, task_id: int, lang: str) -> dict[str, Any]:
