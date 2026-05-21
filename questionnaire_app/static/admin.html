@@ -15,6 +15,8 @@
     .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
     .field label { font-size: 13px; color: #555; }
     .field input, .field select { padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+    .filter-field { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #555; }
+    .filter-field select { padding: 7px 10px; border: 1px solid #ddd; border-radius: 6px; background: #fff; font-size: 13px; }
     .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; }
     .btn-primary { background: #1a1a2e; color: #fff; }
     .btn-primary:hover { background: #2d2d5e; }
@@ -77,7 +79,25 @@
 <div id="mainPanel">
   <div class="toolbar">
     <button class="btn btn-primary" id="refreshBtn">刷新</button>
-    <button class="btn btn-secondary" id="exportBtn">导出 Excel</button>
+    <button class="btn btn-secondary" id="exportBtn">导出正常完成 Excel</button>
+    <label class="filter-field">
+      完成状态
+      <select id="completionFilter">
+        <option value="all">全部</option>
+        <option value="normal_completed">正常完成</option>
+        <option value="incomplete">未完成/异常</option>
+      </select>
+    </label>
+    <label class="filter-field" id="incompleteReasonWrap">
+      原因
+      <select id="incompleteReasonFilter">
+        <option value="all">全部原因</option>
+        <option value="in_progress">进行中</option>
+        <option value="pending_posttest">未提交后测</option>
+        <option value="abandoned">已删除</option>
+        <option value="quality_failed">质量异常</option>
+      </select>
+    </label>
     <label style="font-size:13px;display:flex;align-items:center;gap:6px">
       <input type="checkbox" id="showAbandoned" /> 显示已删除
     </label>
@@ -135,27 +155,56 @@ document.getElementById('loginBtn').onclick = async () => {
 document.getElementById('pwInput').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('loginBtn').click(); });
 
 async function loadSessions() {
-  const incl = document.getElementById('showAbandoned').checked;
+  updateIncompleteReasonState();
+  const incl = shouldIncludeAbandoned();
   sessions = await api('/api/admin/sessions?include_abandoned=' + incl);
   renderTable();
+}
+
+function shouldIncludeAbandoned() {
+  const completion = document.getElementById('completionFilter').value;
+  const reason = document.getElementById('incompleteReasonFilter').value;
+  return document.getElementById('showAbandoned').checked || completion === 'incomplete' || reason === 'abandoned';
+}
+
+function updateIncompleteReasonState() {
+  const completion = document.getElementById('completionFilter').value;
+  const reason = document.getElementById('incompleteReasonFilter');
+  const enabled = completion === 'incomplete';
+  reason.disabled = !enabled;
+  document.getElementById('incompleteReasonWrap').style.opacity = enabled ? '1' : '.55';
+  if (!enabled) reason.value = 'all';
+}
+
+function filteredSessions() {
+  const completion = document.getElementById('completionFilter').value;
+  const reason = document.getElementById('incompleteReasonFilter').value;
+  return sessions.filter(s => {
+    if (completion !== 'all' && s.completion_bucket !== completion) return false;
+    if (completion === 'incomplete' && reason !== 'all' && s.incomplete_reason !== reason) return false;
+    return true;
+  });
 }
 
 function renderTable() {
   const tbody = document.getElementById('sessionBody');
   tbody.innerHTML = '';
-  const total = sessions.length;
-  const complete = sessions.filter(s => s.status === 'complete').length;
-  const invalid = sessions.filter(s => !s.valid).length;
-  document.getElementById('statsLabel').textContent = `共 ${total} 条 · 完成 ${complete} · 无效 ${invalid}`;
-  for (const s of sessions) {
+  const visibleSessions = filteredSessions();
+  const total = visibleSessions.length;
+  const normal = visibleSessions.filter(s => s.completion_bucket === 'normal_completed').length;
+  const incomplete = visibleSessions.filter(s => s.completion_bucket === 'incomplete').length;
+  document.getElementById('statsLabel').textContent = `显示 ${total} 条 · 正常完成 ${normal} · 未完成/异常 ${incomplete}`;
+  for (const s of visibleSessions) {
     const tr = document.createElement('tr');
     const statusBadge = {complete:'badge-complete',in_progress:'badge-progress',abandoned:'badge-abandoned'}[s.status] || '';
     const groupBadge = s.group === 'A' ? 'badge-a' : 'badge-b';
     const qualityBadge = s.valid ? '' : '<span class="badge badge-invalid">无效</span>';
+    const reasonLabels = {in_progress:'进行中',pending_posttest:'未提交后测',abandoned:'已删除',quality_failed:'质量异常'};
+    const completionLabel = s.completion_bucket === 'normal_completed' ? '正常完成' : (reasonLabels[s.incomplete_reason] || '未完成');
     tr.innerHTML = `
       <td><strong>#${s.participant_id}</strong><br><span style="font-size:11px;color:#999">${s.session_id.slice(0,8)}…</span></td>
       <td><span class="badge ${groupBadge}">${s.group}</span></td>
-      <td><span class="badge ${statusBadge}">${{complete:'完成',in_progress:'进行中',abandoned:'已删除'}[s.status]||s.status}</span></td>
+      <td><span class="badge ${statusBadge}">${completionLabel}</span></td>
       <td>${s.total_score ?? '-'} / 30</td>
       <td>${qualityBadge}${s.quality_flags.length ? `<div class="flag-list">${s.quality_flags.join('<br>')}</div>` : '✓'}</td>
       <td style="font-size:12px">${s.created_at ? s.created_at.slice(0,16).replace('T',' ') : '-'}</td>
@@ -270,6 +319,8 @@ document.getElementById('detailModal').onclick = e => { if (e.target === e.curre
 
 document.getElementById('refreshBtn').onclick = loadSessions;
 document.getElementById('showAbandoned').onchange = loadSessions;
+document.getElementById('completionFilter').onchange = loadSessions;
+document.getElementById('incompleteReasonFilter').onchange = loadSessions;
 
 document.getElementById('exportBtn').onclick = async () => {
   const res = await fetch('/api/admin/export?password=' + encodeURIComponent(pw));
@@ -277,7 +328,7 @@ document.getElementById('exportBtn').onclick = async () => {
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = 'questionnaire_export.xlsx'; a.click();
+  a.href = url; a.download = 'questionnaire_normal_completed_export.xlsx'; a.click();
   URL.revokeObjectURL(url);
 };
 </script>

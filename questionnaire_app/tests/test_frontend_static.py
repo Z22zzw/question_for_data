@@ -43,3 +43,16 @@ def test_frontend_scrolls_to_first_unanswered_required_group():
     assert "scrollIntoView" in app_js
     assert "unanswered" in app_js
     assert ".question.unanswered" in styles
+
+
+def test_admin_page_has_completion_and_incomplete_reason_filters():
+    admin_html = (ROOT / "static" / "admin.html").read_text(encoding="utf-8")
+
+    assert 'id="completionFilter"' in admin_html
+    assert 'id="incompleteReasonFilter"' in admin_html
+    assert 'value="normal_completed"' in admin_html
+    assert 'value="pending_posttest"' in admin_html
+    assert 'value="quality_failed"' in admin_html
+    assert "function filteredSessions" in admin_html
+    assert "function shouldIncludeAbandoned" in admin_html
+    assert "questionnaire_normal_completed_export.xlsx" in admin_html

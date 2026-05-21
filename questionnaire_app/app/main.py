@@ -9,7 +9,7 @@ from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .database import Database, decode_json
+from .database import Database, decode_json, seconds_between
 from .export import build_export_workbook
 from .questionnaire import POSTTEST_FIELDS, PRETEST_FIELDS, localized_task, posttest_schema, task_question_ids
 from .scoring import check_response_pattern, check_timing, score_answers, score_supervision
@@ -86,7 +86,6 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         return session_id
 
     def summarize_session(session_id: str) -> dict[str, Any]:
-        from .database import seconds_between
         rows = [row for row in db.all_rows() if row["session"]["id"] == session_id]
         if not rows:
             return {"status": "none"}
@@ -125,6 +124,33 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
             "quality_flags": quality_flags,
             "valid": len(quality_flags) == 0,
         }
+
+    def quality_flags_for_row(row: dict[str, Any]) -> list[str]:
+        answers: dict[str, str] = {}
+        for response in row["responses"]:
+            answers.update(decode_json(response["answers_json"]))
+        task_durations = {}
+        for task_id in range(1, 7):
+            start_row = row["starts"].get(task_id)
+            response = next((r for r in row["responses"] if r["task_id"] == task_id), None)
+            task_durations[task_id] = seconds_between(
+                start_row["started_at"] if start_row else None,
+                response["submitted_at"] if response else None,
+            )
+        session = row["session"]
+        total_seconds = seconds_between(session["created_at"], session["completed_at"])
+        return check_timing(task_durations, total_seconds) + (check_response_pattern(answers) if answers else [])
+
+    def completion_metadata(session: dict[str, Any], quality_flags: list[str]) -> dict[str, str | None]:
+        if session["abandoned_at"]:
+            return {"completion_bucket": "incomplete", "incomplete_reason": "abandoned"}
+        if session["completed_at"] and not quality_flags:
+            return {"completion_bucket": "normal_completed", "incomplete_reason": None}
+        if session["completed_at"]:
+            return {"completion_bucket": "incomplete", "incomplete_reason": "quality_failed"}
+        if session["current_task"] > 6:
+            return {"completion_bucket": "incomplete", "incomplete_reason": "pending_posttest"}
+        return {"completion_bucket": "incomplete", "incomplete_reason": "in_progress"}
 
     def read_task_for_session(session_id: str, task_id: int, lang: str) -> dict[str, Any]:
         session = db.get_session(session_id)
@@ -254,18 +280,22 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
     @app.get("/api/admin/export")
     def export(password: str) -> Response:
         require_admin(password)
-        content = build_export_workbook(db.all_rows())
+        normal_completed_rows = [
+            row
+            for row in db.all_rows()
+            if completion_metadata(dict(row["session"]), quality_flags_for_row(row))["completion_bucket"]
+            == "normal_completed"
+        ]
+        content = build_export_workbook(normal_completed_rows)
         return Response(
             content,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": 'attachment; filename="questionnaire_export.xlsx"'},
+            headers={"Content-Disposition": 'attachment; filename="questionnaire_normal_completed_export.xlsx"'},
         )
 
     @app.get("/api/admin/sessions")
     def admin_list(password: str, include_abandoned: bool = False) -> list[dict[str, Any]]:
         require_admin(password)
-        from .database import decode_json, seconds_between
-        from .scoring import check_response_pattern, check_timing
         sessions = db.admin_list_sessions(include_abandoned)
         result = []
         for s in sessions:
@@ -274,20 +304,13 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
             for r in row["responses"]:
                 answers.update(decode_json(r["answers_json"]))
             scores = score_answers(answers)
-            task_durations = {
-                tid: seconds_between(
-                    row["starts"].get(tid, {}).get("started_at"),
-                    next((r["submitted_at"] for r in row["responses"] if r["task_id"] == tid), None),
-                )
-                for tid in range(1, 7)
-            }
-            total_sec = seconds_between(s["created_at"], s["completed_at"])
-            flags = check_timing(task_durations, total_sec) + (check_response_pattern(answers) if answers else [])
+            flags = quality_flags_for_row(row)
+            completion = completion_metadata(s, flags)
             result.append({
                 "session_id": s["id"],
                 "participant_id": s["participant_id"],
                 "group": s["group_name"],
-                "status": "complete" if s["completed_at"] else "abandoned" if s["abandoned_at"] else "in_progress",
+                "status": "abandoned" if s["abandoned_at"] else "complete" if s["completed_at"] else "in_progress",
                 "current_task": s["current_task"],
                 "created_at": s["created_at"],
                 "completed_at": s["completed_at"],
@@ -295,6 +318,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
                 "total_score": scores["total_score"],
                 "valid": len(flags) == 0,
                 "quality_flags": flags,
+                **completion,
             })
         return result
 

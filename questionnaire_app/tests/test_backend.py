@@ -1,4 +1,5 @@
 from pathlib import Path
+import sqlite3
 
 from fastapi.testclient import TestClient
 from openpyxl import load_workbook
@@ -90,6 +91,55 @@ def posttest_payload() -> dict:
     }
 
 
+def complete_all_tasks(client: TestClient) -> None:
+    for task_id, start in enumerate([1, 6, 11, 16, 21, 26], start=1):
+        response = client.post(
+            f"/api/task/{task_id}",
+            json={"answers": correct_answers(start, start + 4), "supervision_answers": {}},
+        )
+        assert response.status_code == 200
+
+
+def mark_valid_completion_times(db_path: Path, session_id: str) -> None:
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            """
+            UPDATE sessions
+            SET created_at = '2026-01-01T00:00:00+00:00',
+                completed_at = '2026-01-01T00:12:30+00:00'
+            WHERE id = ?
+            """,
+            (session_id,),
+        )
+        for task_id in range(1, 7):
+            conn.execute(
+                """
+                UPDATE task_starts
+                SET started_at = ?
+                WHERE session_id = ? AND task_id = ?
+                """,
+                (f"2026-01-01T00:{(task_id - 1) * 2:02d}:00+00:00", session_id, task_id),
+            )
+            conn.execute(
+                """
+                UPDATE task_responses
+                SET submitted_at = ?
+                WHERE session_id = ? AND task_id = ?
+                """,
+                (f"2026-01-01T00:{(task_id - 1) * 2 + 1:02d}:30+00:00", session_id, task_id),
+            )
+
+
+def admin_sessions(client: TestClient) -> list[dict]:
+    response = client.get("/api/admin/sessions?password=secret&include_abandoned=true")
+    assert response.status_code == 200
+    return response.json()
+
+
+def latest_session_id(client: TestClient) -> str:
+    return admin_sessions(client)[0]["session_id"]
+
+
 def test_pretest_assigns_hidden_balanced_groups(tmp_path: Path):
     client = make_client(tmp_path)
 
@@ -104,13 +154,8 @@ def test_pretest_assigns_hidden_balanced_groups(tmp_path: Path):
         assert SESSION_COOKIE_NAME in response.cookies
         assert "httponly" in response.headers["set-cookie"].lower()
 
-    export_response = client.get("/api/admin/export?password=secret")
-    export_path = tmp_path / "groups.xlsx"
-    export_path.write_bytes(export_response.content)
-    workbook = load_workbook(export_path)
-    sheet = workbook.active
-    headers = [cell.value for cell in sheet[1]]
-    groups = [dict(zip(headers, [cell.value for cell in row]))["group"] for row in sheet.iter_rows(min_row=2)]
+    sessions = client.get("/api/admin/sessions?password=secret").json()
+    groups = [row["group"] for row in sessions]
     assert groups.count("A") == 2
     assert groups.count("B") == 2
 
@@ -165,12 +210,7 @@ def test_scoring_and_excel_export(tmp_path: Path):
     client = make_client(tmp_path)
     pretest = client.post("/api/pretest", json=pretest_payload()).json()
 
-    for task_id, start in enumerate([1, 6, 11, 16, 21, 26], start=1):
-        response = client.post(
-            f"/api/task/{task_id}",
-            json={"answers": correct_answers(start, start + 4), "supervision_answers": {}},
-        )
-        assert response.status_code == 200
+    complete_all_tasks(client)
 
     summary_before_posttest = client.get("/api/session/current").json()
     assert summary_before_posttest["status"] == "posttest"
@@ -191,6 +231,7 @@ def test_scoring_and_excel_export(tmp_path: Path):
     assert summary["scores"]["reasoning_score"] == 12
     assert summary["scores"]["error_identification_score"] == 6
 
+    mark_valid_completion_times(tmp_path / "test.sqlite", latest_session_id(client))
     export_response = client.get("/api/admin/export?password=secret")
     assert export_response.status_code == 200
     export_path = tmp_path / "export.xlsx"
@@ -209,6 +250,50 @@ def test_scoring_and_excel_export(tmp_path: Path):
     assert "start_time" not in headers
     assert "pretest_submit_time" not in headers
     assert "end_time" not in headers
+
+
+def test_admin_export_only_includes_normal_completed_sessions(tmp_path: Path):
+    db_path = tmp_path / "test.sqlite"
+    app = create_app(db_path=db_path, admin_password="secret")
+    client = TestClient(app)
+
+    normal = client.post("/api/pretest", json=pretest_payload()).json()
+    complete_all_tasks(client)
+    assert client.post("/api/posttest", json=posttest_payload()).status_code == 200
+    normal_session_id = latest_session_id(client)
+    mark_valid_completion_times(db_path, normal_session_id)
+
+    pending_posttest = client.post("/api/pretest", json=pretest_payload()).json()
+    complete_all_tasks(client)
+
+    abandoned = client.post("/api/pretest", json=pretest_payload()).json()
+    abandoned_session_id = latest_session_id(client)
+    assert client.delete(f"/api/admin/sessions/{abandoned_session_id}?password=secret").status_code == 200
+
+    invalid_complete = client.post("/api/pretest", json=pretest_payload()).json()
+    complete_all_tasks(client)
+    assert client.post("/api/posttest", json=posttest_payload()).status_code == 200
+
+    sessions = admin_sessions(client)
+    by_participant = {row["participant_id"]: row for row in sessions}
+    assert by_participant[normal["participant_id"]]["completion_bucket"] == "normal_completed"
+    assert by_participant[pending_posttest["participant_id"]]["completion_bucket"] == "incomplete"
+    assert by_participant[pending_posttest["participant_id"]]["incomplete_reason"] == "pending_posttest"
+    assert by_participant[abandoned["participant_id"]]["completion_bucket"] == "incomplete"
+    assert by_participant[abandoned["participant_id"]]["incomplete_reason"] == "abandoned"
+    assert by_participant[invalid_complete["participant_id"]]["completion_bucket"] == "incomplete"
+    assert by_participant[invalid_complete["participant_id"]]["incomplete_reason"] == "quality_failed"
+
+    export_response = client.get("/api/admin/export?password=secret")
+    assert export_response.status_code == 200
+    export_path = tmp_path / "normal_completed_export.xlsx"
+    export_path.write_bytes(export_response.content)
+    workbook = load_workbook(export_path)
+    sheet = workbook.active
+    headers = [cell.value for cell in sheet[1]]
+    rows = [dict(zip(headers, [cell.value for cell in row])) for row in sheet.iter_rows(min_row=2)]
+
+    assert [row["participant_id"] for row in rows] == [normal["participant_id"]]
 
 
 def test_task_can_be_localized_to_chinese(tmp_path: Path):
