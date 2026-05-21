@@ -99,9 +99,15 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         started_at = datetime.fromisoformat(session["created_at"])
         return (started_at + timedelta(seconds=QUESTIONNAIRE_TIME_LIMIT_SECONDS)).isoformat()
 
+    def has_submitted_pretest(session: dict[str, Any]) -> bool:
+        pretest = decode_json(session["pretest_json"])
+        return all(pretest.get(field) not in ("", None) for field in PRETEST_FIELDS)
+
     def elapsed_seconds_for_session(session: dict[str, Any]) -> int:
         from datetime import datetime, timezone
 
+        if session["current_task"] == 0:
+            return 0
         end_at = session["completed_at"] or session["abandoned_at"] or session["timeout_at"]
         if end_at:
             return seconds_between(session["created_at"], end_at) or 0
@@ -118,6 +124,8 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
 
     def ensure_not_timed_out(session: Any) -> bool:
         session_dict = dict(session)
+        if session_dict["current_task"] == 0:
+            return False
         if session_dict["completed_at"] or session_dict["abandoned_at"] or session_dict["timeout_at"]:
             return bool(session_dict["timeout_at"])
         elapsed = elapsed_seconds_for_session(session_dict)
@@ -151,7 +159,8 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         formal = score_answers(answers)
         supervision_scores = score_supervision(supervision)
         posttest_ready = row["session"]["current_task"] > 6 and not row["session"]["posttest_submitted_at"]
-        pretest_ready = row["session"]["current_task"] == 0
+        notice_ready = row["session"]["current_task"] == 0 and has_submitted_pretest(session_dict)
+        pretest_ready = row["session"]["current_task"] == 0 and not notice_ready
         complete = bool(row["session"]["completed_at"])
 
         # Compute per-task durations and total duration for quality checks
@@ -167,12 +176,34 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         timing_flags = check_timing(task_durations, total_seconds)
         pattern_flags = check_response_pattern(answers) if answers else []
         quality_flags = timing_flags + pattern_flags
+        status = (
+            "complete"
+            if complete
+            else "pretest"
+            if pretest_ready
+            else "notice"
+            if notice_ready
+            else "posttest"
+            if posttest_ready
+            else "in_progress"
+        )
+        next_stage = (
+            None
+            if complete
+            else "pretest"
+            if pretest_ready
+            else "notice"
+            if notice_ready
+            else "posttest"
+            if posttest_ready
+            else "task"
+        )
 
         return {
-            "status": "complete" if complete else "pretest" if pretest_ready else "posttest" if posttest_ready else "in_progress",
+            "status": status,
             "participant_id": row["session"]["participant_id"],
-            "next_task": None if row["session"]["current_task"] > 6 else row["session"]["current_task"],
-            "next_stage": None if complete else "pretest" if pretest_ready else "posttest" if posttest_ready else "task",
+            "next_task": None if row["session"]["current_task"] == 0 or row["session"]["current_task"] > 6 else row["session"]["current_task"],
+            "next_stage": next_stage,
             "scores": {key: value for key, value in formal.items() if key != "per_question"},
             "supervision_scores": {key: value for key, value in supervision_scores.items() if key != "per_item"},
             "quality_flags": quality_flags,
@@ -269,34 +300,69 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     @app.post("/api/session/start")
-    def start_session(payload: AgreementPayload, response: Response) -> dict[str, Any]:
+    def start_session_after_pretest(request: Request, payload: AgreementPayload, response: Response) -> dict[str, Any]:
         if payload.agreement != "I agree":
             raise HTTPException(status_code=400, detail="Research notice agreement is required")
-        created = db.start_session(payload.agreement)
-        set_session_cookie(response, created["session_id"])
-        return {
-            "participant_id": created["participant_id"],
-            "next_stage": "pretest",
-            "time_limit_seconds": QUESTIONNAIRE_TIME_LIMIT_SECONDS,
-            "remaining_seconds": QUESTIONNAIRE_TIME_LIMIT_SECONDS,
-        }
-
-    @app.post("/api/pretest")
-    def submit_pretest(request: Request, payload: PretestPayload) -> dict[str, Any]:
         session_id = cookie_session_id(request)
         if not session_id:
-            raise HTTPException(status_code=401, detail="Research notice agreement is required before pretest")
+            raise HTTPException(status_code=401, detail="Pretest is required before research notice agreement")
         session = db.get_session(session_id)
         if not session or session["abandoned_at"]:
             raise HTTPException(status_code=401, detail="No active session")
-        if ensure_not_timed_out(session):
-            raise HTTPException(status_code=410, detail="Session timed out. Please restart the questionnaire.")
+        if not has_submitted_pretest(dict(session)):
+            raise HTTPException(status_code=409, detail="Pretest is required before research notice agreement")
+        try:
+            created = db.start_session(session_id, payload.agreement)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        refreshed = dict(db.get_session(session_id))
+        set_session_cookie(response, created["session_id"])
+        return {
+            "participant_id": created["participant_id"],
+            "next_task": created["next_task"],
+            "next_stage": created["next_stage"],
+            "time_limit_seconds": QUESTIONNAIRE_TIME_LIMIT_SECONDS,
+            "remaining_seconds": timing_metadata(refreshed)["remaining_seconds"],
+        }
+
+    @app.post("/api/pretest")
+    def submit_pretest(request: Request, payload: PretestPayload, response: Response) -> dict[str, Any]:
+        session_id = cookie_session_id(request)
         pretest = payload.model_dump()
         missing = [field for field in PRETEST_FIELDS if pretest.get(field) in ("", None)]
         if missing:
             raise HTTPException(status_code=400, detail=f"Missing required fields: {', '.join(missing)}")
         if pretest["consent"] != "I agree":
             raise HTTPException(status_code=400, detail="Consent is required")
+        if not session_id:
+            saved = db.create_session(pretest)
+            set_session_cookie(response, saved["session_id"])
+            return {
+                "participant_id": saved["participant_id"],
+                "next_task": saved["next_task"],
+                "next_stage": saved["next_stage"],
+            }
+        session = db.get_session(session_id)
+        if not session or session["abandoned_at"]:
+            saved = db.create_session(pretest)
+            set_session_cookie(response, saved["session_id"])
+            return {
+                "participant_id": saved["participant_id"],
+                "next_task": saved["next_task"],
+                "next_stage": saved["next_stage"],
+            }
+        if ensure_not_timed_out(session):
+            raise HTTPException(status_code=410, detail="Session timed out. Please restart the questionnaire.")
+        if session["current_task"] != 0:
+            saved = db.create_session(pretest)
+            set_session_cookie(response, saved["session_id"])
+            return {
+                "participant_id": saved["participant_id"],
+                "next_task": saved["next_task"],
+                "next_stage": saved["next_stage"],
+            }
         try:
             saved = db.save_pretest(session_id, pretest)
         except ValueError as exc:

@@ -286,6 +286,8 @@ function setLanguage(lang) {
   resetHomeButton.textContent = t("resetHome");
   if (state.status === "pretest") {
     renderPretest();
+  } else if (state.status === "notice") {
+    renderResearchNotice();
   } else if (state.status === "in_progress" && state.nextTask >= 1 && state.nextTask <= 6) {
     loadTask(state.nextTask);
   } else if (state.status === "posttest") {
@@ -293,7 +295,7 @@ function setLanguage(lang) {
   } else if (state.status === "complete") {
     renderComplete();
   } else if (state.status !== "loading") {
-    renderResearchNotice();
+    renderPretest();
   } else {
     progressLabel.textContent = t("pretest");
     setOverallProgress("none");
@@ -370,11 +372,11 @@ async function retryPending() {
     const result = await api(pending.path, { method: pending.method, body: JSON.stringify(pending.body) });
     localStorage.removeItem("questionnaire_pending_submit");
     if (pending.kind === "pretest") {
-      state.status = "in_progress";
+      state.status = "notice";
       state.nextStage = result.next_stage;
       state.nextTask = result.next_task;
       localStorage.removeItem(draftKey("pretest"));
-      await loadTask(state.nextTask);
+      renderResearchNotice();
     } else if (pending.kind === "task") {
       state.status = result.posttest_required ? "posttest" : "in_progress";
       state.nextStage = result.posttest_required ? "posttest" : "task";
@@ -396,12 +398,12 @@ async function retryPending() {
 
 function renderResearchNotice() {
   stopTimer();
-  state.status = "none";
-  state.nextStage = null;
+  state.status = "notice";
+  state.nextStage = "notice";
   state.nextTask = null;
   state.expiresAt = null;
-  progressLabel.textContent = t("pretest");
-  setOverallProgress("none");
+  progressLabel.textContent = t("consent");
+  setOverallProgress("pretest");
   timerLabel.textContent = formatClock(state.timeLimitSeconds);
   timerLabel.classList.remove("warning");
   view.innerHTML = `
@@ -430,11 +432,11 @@ function renderResearchNotice() {
     event.preventDefault();
     try {
       const result = await api("/api/session/start", { method: "POST", body: JSON.stringify({ agreement: "I agree" }) });
-      state.status = "pretest";
-      state.nextStage = "pretest";
-      state.nextTask = 0;
+      state.status = "in_progress";
+      state.nextStage = result.next_stage;
+      state.nextTask = result.next_task;
       setTimerFromSession(result);
-      renderPretest();
+      await loadTask(state.nextTask);
     } catch (error) {
       document.getElementById("error").textContent = error.message;
     }
@@ -463,8 +465,15 @@ function renderTimeoutNotice() {
 }
 
 function renderPretest() {
+  stopTimer();
+  state.status = "pretest";
+  state.nextStage = "pretest";
+  state.nextTask = null;
+  state.expiresAt = null;
   setOverallProgress("pretest");
   progressLabel.textContent = t("pretest");
+  timerLabel.textContent = formatClock(state.timeLimitSeconds);
+  timerLabel.classList.remove("warning");
   const fields = pretestFields
     .map(([name, type]) => {
       const label = i18n[state.lang].fields[name];
@@ -502,10 +511,10 @@ function renderPretest() {
     try {
       const result = await api(pending.path, { method: pending.method, body: JSON.stringify(payload) });
       localStorage.removeItem(draftKey("pretest"));
-      state.status = "in_progress";
+      state.status = "notice";
       state.nextStage = result.next_stage;
       state.nextTask = result.next_task;
-      await loadTask(state.nextTask);
+      renderResearchNotice();
     } catch (error) {
       if (maybeRenderTimeout(error)) return;
       savePending(pending);
@@ -770,18 +779,20 @@ async function resetToHome() {
   state.nextTask = 0;
   state.expiresAt = null;
   networkStatus.textContent = "";
-  renderResearchNotice();
+  renderPretest();
 }
 
 function applyCurrentSession(current) {
   state.status = current.status;
   state.nextStage = current.next_stage || null;
   state.nextTask = current.next_task || null;
-  if (["pretest", "in_progress", "posttest"].includes(current.status)) {
+  if (["in_progress", "posttest"].includes(current.status)) {
     setTimerFromSession(current);
   }
   if (current.status === "pretest") {
     renderPretest();
+  } else if (current.status === "notice") {
+    renderResearchNotice();
   } else if (current.status === "in_progress") {
     loadTask(current.next_task);
   } else if (current.status === "posttest") {
@@ -792,7 +803,7 @@ function applyCurrentSession(current) {
     clearQuestionnaireLocalState();
     renderTimeoutNotice();
   } else {
-    renderResearchNotice();
+    renderPretest();
   }
 }
 
@@ -804,7 +815,7 @@ async function bootstrapSession() {
     applyCurrentSession(current);
   } catch {
     state.status = "none";
-    renderResearchNotice();
+    renderPretest();
   }
 }
 

@@ -44,9 +44,11 @@ def start_session(client: TestClient):
 
 
 def submit_pretest(client: TestClient) -> dict:
-    start_session(client)
-    response = client.post("/api/pretest", json=pretest_payload())
-    assert response.status_code == 200
+    pretest_response = client.post("/api/pretest", json=pretest_payload())
+    assert pretest_response.status_code == 200
+    assert pretest_response.json()["next_stage"] == "notice"
+    response = start_session(client)
+    assert response.json()["next_stage"] == "task"
     return response.json()
 
 
@@ -168,7 +170,13 @@ def test_pretest_assigns_hidden_balanced_groups(tmp_path: Path):
         assert data["next_task"] == 1
         assert data["next_stage"] == "task"
         assert data["participant_id"] == idx + 1
-        assert set(data.keys()) == {"participant_id", "next_task", "next_stage"}
+        assert set(data.keys()) == {
+            "participant_id",
+            "next_task",
+            "next_stage",
+            "time_limit_seconds",
+            "remaining_seconds",
+        }
 
     sessions = client.get("/api/admin/sessions?password=secret").json()
     groups = [row["group"] for row in sessions]
@@ -176,13 +184,19 @@ def test_pretest_assigns_hidden_balanced_groups(tmp_path: Path):
     assert groups.count("B") == 2
 
 
-def test_pretest_requires_prior_research_notice_agreement(tmp_path: Path):
+def test_pretest_precedes_research_notice_agreement(tmp_path: Path):
     client = make_client(tmp_path)
 
     response = client.post("/api/pretest", json=pretest_payload())
 
-    assert response.status_code == 401
-    assert response.json()["detail"] == "Research notice agreement is required before pretest"
+    assert response.status_code == 200
+    assert response.json()["next_stage"] == "notice"
+    current = client.get("/api/session/current").json()
+    assert current["status"] == "notice"
+    assert current["remaining_seconds"] == 40 * 60
+    start = start_session(client).json()
+    assert start["next_stage"] == "task"
+    assert start["remaining_seconds"] <= 40 * 60
 
 
 def test_group_b_gets_supervision_cards_only_for_first_two_tasks(tmp_path: Path):
@@ -282,7 +296,7 @@ def test_timeout_marks_session_blocks_submissions_and_reports_duration(tmp_path:
     app = create_app(db_path=db_path, admin_password="secret")
     client = TestClient(app)
 
-    start_session(client)
+    submit_pretest(client)
     session_id = latest_session_id(client)
     mark_session_started_at(db_path, session_id, "2026-01-01T00:00:00+00:00")
 
@@ -383,16 +397,18 @@ def test_session_current_and_reset_use_cookie_not_local_storage_ids(tmp_path: Pa
 
     assert client.get("/api/session/current").json()["status"] == "none"
 
-    start_response = start_session(client)
-
-    current_pretest = client.get("/api/session/current").json()
-    assert current_pretest["status"] == "pretest"
-    assert current_pretest["next_stage"] == "pretest"
-    assert current_pretest["time_limit_seconds"] == 40 * 60
-    assert current_pretest["remaining_seconds"] <= 40 * 60
-
     pretest_response = client.post("/api/pretest", json=pretest_payload())
-    assert start_response.cookies[SESSION_COOKIE_NAME] == client.cookies.get(SESSION_COOKIE_NAME)
+    assert pretest_response.status_code == 200
+    assert SESSION_COOKIE_NAME in pretest_response.cookies
+
+    current_notice = client.get("/api/session/current").json()
+    assert current_notice["status"] == "notice"
+    assert current_notice["next_stage"] == "notice"
+    assert current_notice["time_limit_seconds"] == 40 * 60
+    assert current_notice["remaining_seconds"] == 40 * 60
+
+    start_response = start_session(client)
+    assert pretest_response.cookies[SESSION_COOKIE_NAME] == client.cookies.get(SESSION_COOKIE_NAME)
 
     current = client.get("/api/session/current").json()
     assert current["status"] == "in_progress"

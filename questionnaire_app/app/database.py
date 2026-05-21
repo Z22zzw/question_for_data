@@ -101,30 +101,49 @@ class Database:
                 (id, participant_id, group_name, current_task, pretest_json, created_at, pretest_submitted_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (session_id, participant_id, group, 1, json.dumps(pretest, ensure_ascii=False), now, now),
-            )
-        return {"session_id": session_id, "participant_id": participant_id, "group": group, "next_task": 1}
-
-    def start_session(self, agreement: str) -> dict[str, Any]:
-        session_id = uuid.uuid4().hex
-        group = self.choose_group()
-        now = utc_now()
-        pretest = {"research_notice_agreement": agreement}
-        with self.connect() as conn:
-            participant_id = (
-                conn.execute("SELECT COALESCE(MAX(participant_id), 0) + 1 AS next_id FROM sessions").fetchone()[
-                    "next_id"
-                ]
-            )
-            conn.execute(
-                """
-                INSERT INTO sessions
-                (id, participant_id, group_name, current_task, pretest_json, created_at, pretest_submitted_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
                 (session_id, participant_id, group, 0, json.dumps(pretest, ensure_ascii=False), now, now),
             )
-        return {"session_id": session_id, "participant_id": participant_id, "group": group}
+        return {
+            "session_id": session_id,
+            "participant_id": participant_id,
+            "group": group,
+            "next_task": None,
+            "next_stage": "notice",
+        }
+
+    def start_session(self, session_id: str, agreement: str) -> dict[str, Any]:
+        now = utc_now()
+        with self.connect() as conn:
+            session = conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,)).fetchone()
+            if not session:
+                raise LookupError("Session not found")
+            if session["abandoned_at"] or session["timeout_at"]:
+                raise ValueError("Session is not active")
+            if session["current_task"] != 0:
+                return {
+                    "session_id": session_id,
+                    "participant_id": session["participant_id"],
+                    "group": session["group_name"],
+                    "next_task": session["current_task"] if session["current_task"] <= 6 else None,
+                    "next_stage": "posttest" if session["current_task"] > 6 else "task",
+                }
+            pretest = decode_json(session["pretest_json"])
+            pretest["research_notice_agreement"] = agreement
+            conn.execute(
+                """
+                UPDATE sessions
+                SET pretest_json = ?, created_at = ?, current_task = 1
+                WHERE id = ?
+                """,
+                (json.dumps(pretest, ensure_ascii=False), now, session_id),
+            )
+        return {
+            "session_id": session_id,
+            "participant_id": session["participant_id"],
+            "group": session["group_name"],
+            "next_task": 1,
+            "next_stage": "task",
+        }
 
     def get_session(self, session_id: str) -> sqlite3.Row | None:
         with self.connect() as conn:
@@ -161,12 +180,12 @@ class Database:
             conn.execute(
                 """
                 UPDATE sessions
-                SET pretest_json = ?, pretest_submitted_at = ?, current_task = 1
+                SET pretest_json = ?, pretest_submitted_at = ?, current_task = 0
                 WHERE id = ?
                 """,
                 (json.dumps(pretest, ensure_ascii=False), submitted_at, session_id),
             )
-        return {"next_task": 1, "next_stage": "task"}
+        return {"next_task": None, "next_stage": "notice"}
 
     def mark_task_started(self, session_id: str, task_id: int) -> None:
         with self.connect() as conn:
