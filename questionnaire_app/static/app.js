@@ -1,5 +1,7 @@
 const view = document.getElementById("view");
 const progressLabel = document.getElementById("progressLabel");
+const overallProgressLabel = document.getElementById("overallProgressLabel");
+const timerLabel = document.getElementById("timerLabel");
 const languageToggle = document.getElementById("languageToggle");
 const resetHomeButton = document.getElementById("resetHome");
 const networkStatus = document.getElementById("networkStatus");
@@ -13,6 +15,26 @@ const i18n = {
     pretestTitle: "Pretest Information",
     pretestHint: "Please complete the shared pretest before entering the task section. Your participant ID will be assigned automatically.",
     consent: "Consent",
+    noticeTitle: "Research Notice and Rules",
+    noticeIntro: "Please read the following rules carefully before starting.",
+    noticeRules: [
+      "This questionnaire includes a pretest, formal tasks, and a posttest. The total formal response time is limited to 40 minutes. Timing starts after you click “Agree and Start”; page refreshes, closing the page, disconnections, and re-entry all count toward the total time.",
+      "Please complete the questionnaire independently. Do not use AI tools, search engines, coding assistants, or help from others to gain answer-related assistance.",
+      "This questionnaire collects response data, progress, group assignment, submission time, and response duration. The data is used only for academic research and statistical analysis, and will not be used for commercial purposes or personal identification.",
+      "If the response time exceeds 40 minutes, the system will automatically stop this attempt. The data from this attempt will not be included as a valid sample. You may return to the home page and restart.",
+    ],
+    noticeAgreement: "I have read and agree to the research notice and questionnaire rules",
+    noticeStart: "Agree and Start",
+    noticeCancel: "Cancel",
+    notStarted: "Not started",
+    overallPretest: "Overall progress: Pretest · 1 / 8",
+    overallTask: (id) => `Overall progress: Task ${id} / 6 · ${id + 1} / 8`,
+    overallPosttest: "Overall progress: Posttest · 8 / 8",
+    overallComplete: "Overall progress: Complete · 8 / 8",
+    remaining: (time) => `Remaining ${time}`,
+    timeoutTitle: "Time limit reached. Please restart.",
+    timeoutText: "This questionnaire is limited to 40 minutes. Because the current attempt exceeded the time limit, this response will not be included as a valid sample. Please return to the home page and restart.",
+    restart: "Restart",
     select: "Select",
     agree: "I agree",
     disagree: "I do not agree",
@@ -52,6 +74,26 @@ const i18n = {
     pretestTitle: "前测信息",
     pretestHint: "请先完成 A/B 共用前测。参与者 ID 将由系统自动分配。",
     consent: "知情同意",
+    noticeTitle: "研究告知书与作答规则",
+    noticeIntro: "请在开始前仔细阅读以下说明：",
+    noticeRules: [
+      "本次问卷包含前测、正式任务和后测，正式作答总时长限制为 40 分钟。计时从点击“同意并开始作答”后开始，页面刷新、关闭、断线或重新进入均计入总计时。",
+      "作答过程中请独立完成，不得使用 AI 工具、搜索引擎、代码助手或他人协助来获取答案便利。",
+      "本问卷会收集你的作答结果、作答进度、分组信息、提交时间和作答耗时等数据。数据仅用于学术研究与统计分析，不会用于商业用途或个人身份识别。",
+      "若作答超过 40 分钟，系统将自动终止本次作答，本次数据不会纳入有效样本。你可以返回首页重新开始作答。",
+    ],
+    noticeAgreement: "我已阅读并同意研究告知书与作答规则",
+    noticeStart: "同意并开始作答",
+    noticeCancel: "取消",
+    notStarted: "未开始",
+    overallPretest: "总进度：前测 · 1 / 8",
+    overallTask: (id) => `总进度：任务 ${id} / 6 · ${id + 1} / 8`,
+    overallPosttest: "总进度：后测 · 8 / 8",
+    overallComplete: "总进度：完成 · 8 / 8",
+    remaining: (time) => `剩余 ${time}`,
+    timeoutTitle: "作答已超时，请重新作答",
+    timeoutText: "本次问卷限时 40 分钟。由于当前作答已超过时限，本次回答将不纳入有效样本。请返回首页重新开始作答。",
+    restart: "重新作答",
     select: "请选择",
     agree: "I agree",
     disagree: "I do not agree",
@@ -133,7 +175,11 @@ const state = {
   nextStage: null,
   nextTask: null,
   lang: localStorage.getItem("questionnaire_lang") || "en",
+  expiresAt: null,
+  timeLimitSeconds: 40 * 60,
 };
+
+let timerInterval = null;
 
 const pretestFields = [
   ["age", "number"],
@@ -160,6 +206,76 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;");
 }
 
+function formatClock(totalSeconds) {
+  const safe = Math.max(0, Number(totalSeconds) || 0);
+  const minutes = Math.floor(safe / 60);
+  const seconds = safe % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function setOverallProgress(stage, taskId = null) {
+  if (stage === "pretest") overallProgressLabel.textContent = t("overallPretest");
+  else if (stage === "task") overallProgressLabel.textContent = t("overallTask")(taskId);
+  else if (stage === "posttest") overallProgressLabel.textContent = t("overallPosttest");
+  else if (stage === "complete") overallProgressLabel.textContent = t("overallComplete");
+  else overallProgressLabel.textContent = t("notStarted");
+}
+
+function setTimerFromSession(session) {
+  state.timeLimitSeconds = session.time_limit_seconds || 40 * 60;
+  if (typeof session.remaining_seconds === "number") {
+    state.expiresAt = Date.now() + session.remaining_seconds * 1000;
+  } else if (!state.expiresAt) {
+    state.expiresAt = Date.now() + state.timeLimitSeconds * 1000;
+  }
+  startTimer();
+}
+
+function stopTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = null;
+}
+
+function updateTimer() {
+  if (!state.expiresAt || ["none", "loading", "complete", "timeout"].includes(state.status)) {
+    timerLabel.textContent = formatClock(state.timeLimitSeconds);
+    timerLabel.classList.remove("warning");
+    return;
+  }
+  const remaining = Math.max(0, Math.ceil((state.expiresAt - Date.now()) / 1000));
+  timerLabel.textContent = t("remaining")(formatClock(remaining));
+  timerLabel.classList.toggle("warning", remaining <= 5 * 60);
+  if (remaining <= 0) {
+    stopTimer();
+    handleTimeout();
+  }
+}
+
+function startTimer() {
+  stopTimer();
+  updateTimer();
+  timerInterval = setInterval(updateTimer, 1000);
+}
+
+function clearQuestionnaireLocalState() {
+  localStorage.removeItem("questionnaire_pending_submit");
+  for (const key of Object.keys(localStorage)) {
+    if (key.startsWith("questionnaire_draft_")) {
+      localStorage.removeItem(key);
+    }
+  }
+}
+
+async function handleTimeout() {
+  try {
+    await api("/api/session/current");
+  } catch {
+    // The timeout UI still needs to be shown even if the network is unavailable.
+  }
+  clearQuestionnaireLocalState();
+  renderTimeoutNotice();
+}
+
 function setLanguage(lang) {
   state.lang = lang;
   localStorage.setItem("questionnaire_lang", lang);
@@ -168,16 +284,19 @@ function setLanguage(lang) {
   });
   languageToggle.textContent = t("switchLabel");
   resetHomeButton.textContent = t("resetHome");
-  if (state.status === "in_progress" && state.nextTask >= 1 && state.nextTask <= 6) {
+  if (state.status === "pretest") {
+    renderPretest();
+  } else if (state.status === "in_progress" && state.nextTask >= 1 && state.nextTask <= 6) {
     loadTask(state.nextTask);
   } else if (state.status === "posttest") {
     loadPosttest();
   } else if (state.status === "complete") {
     renderComplete();
   } else if (state.status !== "loading") {
-    renderPretest();
+    renderResearchNotice();
   } else {
     progressLabel.textContent = t("pretest");
+    setOverallProgress("none");
   }
 }
 
@@ -187,8 +306,21 @@ async function api(path, options = {}) {
     ...options,
   });
   const data = response.headers.get("content-type")?.includes("application/json") ? await response.json() : null;
-  if (!response.ok) throw new Error(data?.detail || "Request failed");
+  if (!response.ok) {
+    const error = new Error(data?.detail || "Request failed");
+    error.status = response.status;
+    throw error;
+  }
   return data;
+}
+
+function maybeRenderTimeout(error) {
+  if (error.status === 410) {
+    clearQuestionnaireLocalState();
+    renderTimeoutNotice();
+    return true;
+  }
+  return false;
 }
 
 function draftKey(name) {
@@ -256,12 +388,82 @@ async function retryPending() {
       localStorage.removeItem(draftKey("posttest"));
       renderComplete();
     }
-  } catch {
+  } catch (error) {
+    if (maybeRenderTimeout(error)) return;
     networkStatus.textContent = t("pending");
   }
 }
 
+function renderResearchNotice() {
+  stopTimer();
+  state.status = "none";
+  state.nextStage = null;
+  state.nextTask = null;
+  state.expiresAt = null;
+  progressLabel.textContent = t("pretest");
+  setOverallProgress("none");
+  timerLabel.textContent = formatClock(state.timeLimitSeconds);
+  timerLabel.classList.remove("warning");
+  view.innerHTML = `
+    <form id="noticeForm" class="task-layout">
+      <section class="task-block">
+        <h2>${t("noticeTitle")}</h2>
+        <p class="status">${t("noticeIntro")}</p>
+        <ol class="notice-list">
+          ${t("noticeRules").map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+        </ol>
+        <label class="agreement">
+          <input type="checkbox" name="agreement" value="I agree" required />
+          <span>${t("noticeAgreement")}</span>
+        </label>
+      </section>
+      <div class="actions">
+        <button class="ghost" type="button" id="noticeCancel">${t("noticeCancel")}</button>
+        <button class="primary" type="submit">${t("noticeStart")}</button>
+      </div>
+      <p class="status error" id="error"></p>
+    </form>
+  `;
+
+  document.getElementById("noticeCancel").onclick = () => renderResearchNotice();
+  document.getElementById("noticeForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      const result = await api("/api/session/start", { method: "POST", body: JSON.stringify({ agreement: "I agree" }) });
+      state.status = "pretest";
+      state.nextStage = "pretest";
+      state.nextTask = 0;
+      setTimerFromSession(result);
+      renderPretest();
+    } catch (error) {
+      document.getElementById("error").textContent = error.message;
+    }
+  });
+}
+
+function renderTimeoutNotice() {
+  state.status = "timeout";
+  state.nextStage = null;
+  state.nextTask = null;
+  state.expiresAt = null;
+  progressLabel.textContent = t("unavailable");
+  setOverallProgress("none");
+  timerLabel.textContent = t("remaining")(formatClock(0));
+  timerLabel.classList.add("warning");
+  view.innerHTML = `
+    <section class="task-block">
+      <h2>${t("timeoutTitle")}</h2>
+      <p class="status error">${t("timeoutText")}</p>
+      <div class="actions">
+        <button class="primary" id="restartBtn" type="button">${t("restart")}</button>
+      </div>
+    </section>
+  `;
+  document.getElementById("restartBtn").onclick = resetToHome;
+}
+
 function renderPretest() {
+  setOverallProgress("pretest");
   progressLabel.textContent = t("pretest");
   const fields = pretestFields
     .map(([name, type]) => {
@@ -281,14 +483,7 @@ function renderPretest() {
       <h2>${t("pretestTitle")}</h2>
       <p class="status">${t("pretestHint")}</p>
       <div class="grid">
-        <label class="field">
-          <span>${t("consent")}</span>
-          <select name="consent" required>
-            <option value="">${t("select")}</option>
-            <option value="I agree">${t("agree")}</option>
-            <option value="I do not agree">${t("disagree")}</option>
-          </select>
-        </label>
+        <input name="consent" type="hidden" value="I agree" />
         ${fields}
       </div>
       <div class="actions">
@@ -312,6 +507,7 @@ function renderPretest() {
       state.nextTask = result.next_task;
       await loadTask(state.nextTask);
     } catch (error) {
+      if (maybeRenderTimeout(error)) return;
       savePending(pending);
       document.getElementById("error").textContent = error.message;
     }
@@ -357,11 +553,13 @@ function validateRequiredRadioGroups(form) {
 }
 
 async function loadTask(taskId) {
+  setOverallProgress("task", taskId);
   progressLabel.textContent = t("taskProgress")(taskId);
   try {
     const task = await api(`/api/task/${taskId}?lang=${state.lang}`);
     renderTask(task);
   } catch (error) {
+    if (maybeRenderTimeout(error)) return;
     view.innerHTML = `<h2>${t("unavailable")}</h2><p class="status error">${escapeHtml(error.message)}</p>`;
   }
 }
@@ -449,6 +647,7 @@ function renderTask(task) {
         await loadTask(result.next_task);
       }
     } catch (error) {
+      if (maybeRenderTimeout(error)) return;
       savePending(pending);
       document.getElementById("error").textContent = error.message;
     }
@@ -456,11 +655,13 @@ function renderTask(task) {
 }
 
 async function loadPosttest() {
+  setOverallProgress("posttest");
   progressLabel.textContent = t("posttestProgress");
   try {
     const schema = await api(`/api/posttest?lang=${state.lang}`);
     renderPosttest(schema);
   } catch (error) {
+    if (maybeRenderTimeout(error)) return;
     view.innerHTML = `<h2>${t("unavailable")}</h2><p class="status error">${escapeHtml(error.message)}</p>`;
   }
 }
@@ -539,6 +740,7 @@ function renderPosttest(schema) {
         renderComplete();
       }
     } catch (error) {
+      if (maybeRenderTimeout(error)) return;
       savePending(pending);
       document.getElementById("error").textContent = error.message;
     }
@@ -546,6 +748,9 @@ function renderPosttest(schema) {
 }
 
 function renderComplete() {
+  stopTimer();
+  state.expiresAt = null;
+  setOverallProgress("complete");
   progressLabel.textContent = t("complete");
   view.innerHTML = `
     <h2>${t("completeTitle")}</h2>
@@ -559,31 +764,35 @@ async function resetToHome() {
   } catch {
     // If offline, still clear browser-side drafts so the user can restart locally.
   }
-  localStorage.removeItem("questionnaire_pending_submit");
-  for (const key of Object.keys(localStorage)) {
-    if (key.startsWith("questionnaire_draft_")) {
-      localStorage.removeItem(key);
-    }
-  }
+  clearQuestionnaireLocalState();
   state.status = "none";
   state.nextStage = null;
   state.nextTask = 0;
+  state.expiresAt = null;
   networkStatus.textContent = "";
-  renderPretest();
+  renderResearchNotice();
 }
 
 function applyCurrentSession(current) {
   state.status = current.status;
   state.nextStage = current.next_stage || null;
   state.nextTask = current.next_task || null;
-  if (current.status === "in_progress") {
+  if (["pretest", "in_progress", "posttest"].includes(current.status)) {
+    setTimerFromSession(current);
+  }
+  if (current.status === "pretest") {
+    renderPretest();
+  } else if (current.status === "in_progress") {
     loadTask(current.next_task);
   } else if (current.status === "posttest") {
     loadPosttest();
   } else if (current.status === "complete") {
     renderComplete();
+  } else if (current.status === "timeout") {
+    clearQuestionnaireLocalState();
+    renderTimeoutNotice();
   } else {
-    renderPretest();
+    renderResearchNotice();
   }
 }
 
@@ -595,7 +804,7 @@ async function bootstrapSession() {
     applyCurrentSession(current);
   } catch {
     state.status = "none";
-    renderPretest();
+    renderResearchNotice();
   }
 }
 

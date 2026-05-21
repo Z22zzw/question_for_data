@@ -37,6 +37,7 @@
     .badge-complete { background: #d1fae5; color: #065f46; }
     .badge-progress { background: #dbeafe; color: #1e40af; }
     .badge-abandoned { background: #fee2e2; color: #991b1b; }
+    .badge-timeout { background: #ffe4e6; color: #9f1239; }
     .badge-invalid { background: #fef3c7; color: #92400e; }
     .badge-a { background: #ede9fe; color: #5b21b6; }
     .badge-b { background: #fce7f3; color: #9d174d; }
@@ -96,6 +97,7 @@
         <option value="pending_posttest">未提交后测</option>
         <option value="abandoned">已删除</option>
         <option value="quality_failed">质量异常</option>
+        <option value="timeout">超时</option>
       </select>
     </label>
     <label style="font-size:13px;display:flex;align-items:center;gap:6px">
@@ -106,7 +108,7 @@
   <table id="sessionTable">
     <thead>
       <tr>
-        <th>ID</th><th>分组</th><th>状态</th><th>总分</th><th>质量</th><th>创建时间</th><th>完成时间</th><th>操作</th>
+        <th>ID</th><th>分组</th><th>状态</th><th>总分</th><th>质量</th><th>总耗时</th><th>创建时间</th><th>完成时间</th><th>操作</th>
       </tr>
     </thead>
     <tbody id="sessionBody"></tbody>
@@ -196,10 +198,10 @@ function renderTable() {
   document.getElementById('statsLabel').textContent = `显示 ${total} 条 · 正常完成 ${normal} · 未完成/异常 ${incomplete}`;
   for (const s of visibleSessions) {
     const tr = document.createElement('tr');
-    const statusBadge = {complete:'badge-complete',in_progress:'badge-progress',abandoned:'badge-abandoned'}[s.status] || '';
+    const statusBadge = {complete:'badge-complete',in_progress:'badge-progress',abandoned:'badge-abandoned',timeout:'badge-timeout'}[s.status] || '';
     const groupBadge = s.group === 'A' ? 'badge-a' : 'badge-b';
     const qualityBadge = s.valid ? '' : '<span class="badge badge-invalid">无效</span>';
-    const reasonLabels = {in_progress:'进行中',pending_posttest:'未提交后测',abandoned:'已删除',quality_failed:'质量异常'};
+    const reasonLabels = {in_progress:'进行中',pending_posttest:'未提交后测',abandoned:'已删除',quality_failed:'质量异常',timeout:'超时'};
     const completionLabel = s.completion_bucket === 'normal_completed' ? '正常完成' : (reasonLabels[s.incomplete_reason] || '未完成');
     tr.innerHTML = `
       <td><strong>#${s.participant_id}</strong><br><span style="font-size:11px;color:#999">${s.session_id.slice(0,8)}…</span></td>
@@ -207,6 +209,7 @@ function renderTable() {
       <td><span class="badge ${statusBadge}">${completionLabel}</span></td>
       <td>${s.total_score ?? '-'} / 30</td>
       <td>${qualityBadge}${s.quality_flags.length ? `<div class="flag-list">${s.quality_flags.join('<br>')}</div>` : '✓'}</td>
+      <td style="font-size:12px">${s.total_duration_hms || '-'}</td>
       <td style="font-size:12px">${s.created_at ? s.created_at.slice(0,16).replace('T',' ') : '-'}</td>
       <td style="font-size:12px">${s.completed_at ? s.completed_at.slice(0,16).replace('T',' ') : '-'}</td>
       <td>
@@ -256,6 +259,7 @@ async function openDetail(id) {
       ${kv('分组', s.group_name)}
       ${kv('状态', s.completed_at ? '完成' : s.abandoned_at ? '已删除' : '进行中')}
       ${kv('当前任务', s.current_task)}
+      ${kv('总耗时', s.total_duration_hms)}
       ${kv('创建时间', s.created_at?.slice(0,19).replace('T',' '))}
       ${kv('完成时间', s.completed_at?.slice(0,19).replace('T',' '))}
     </div>

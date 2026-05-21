@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -9,13 +10,14 @@ from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .database import Database, decode_json, seconds_between
+from .database import Database, decode_json, seconds_between, seconds_to_hms
 from .export import build_export_workbook
 from .questionnaire import POSTTEST_FIELDS, PRETEST_FIELDS, localized_task, posttest_schema, task_question_ids
 from .scoring import check_response_pattern, check_timing, score_answers, score_supervision
 
 SESSION_COOKIE_NAME = "questionnaire_session"
 SESSION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 7
+QUESTIONNAIRE_TIME_LIMIT_SECONDS = 40 * 60
 
 
 class PretestPayload(BaseModel):
@@ -30,6 +32,10 @@ class PretestPayload(BaseModel):
     numpy_familiarity: str
     ai_tool_use_frequency: str
     ai_code_review_experience: str
+
+
+class AgreementPayload(BaseModel):
+    agreement: str
 
 
 class TaskPayload(BaseModel):
@@ -83,13 +89,60 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         session = db.get_session(session_id)
         if not session or session["abandoned_at"]:
             raise HTTPException(status_code=401, detail="No active session")
+        if ensure_not_timed_out(session):
+            raise HTTPException(status_code=410, detail="Session timed out. Please restart the questionnaire.")
         return session_id
+
+    def timeout_at_for_session(session: dict[str, Any]) -> str:
+        from datetime import datetime
+
+        started_at = datetime.fromisoformat(session["created_at"])
+        return (started_at + timedelta(seconds=QUESTIONNAIRE_TIME_LIMIT_SECONDS)).isoformat()
+
+    def elapsed_seconds_for_session(session: dict[str, Any]) -> int:
+        from datetime import datetime, timezone
+
+        end_at = session["completed_at"] or session["abandoned_at"] or session["timeout_at"]
+        if end_at:
+            return seconds_between(session["created_at"], end_at) or 0
+        started_at = datetime.fromisoformat(session["created_at"])
+        return max(0, int((datetime.now(timezone.utc) - started_at).total_seconds()))
+
+    def timing_metadata(session: dict[str, Any]) -> dict[str, int]:
+        elapsed = elapsed_seconds_for_session(session)
+        return {
+            "time_limit_seconds": QUESTIONNAIRE_TIME_LIMIT_SECONDS,
+            "elapsed_seconds": elapsed,
+            "remaining_seconds": max(0, QUESTIONNAIRE_TIME_LIMIT_SECONDS - elapsed),
+        }
+
+    def ensure_not_timed_out(session: Any) -> bool:
+        session_dict = dict(session)
+        if session_dict["completed_at"] or session_dict["abandoned_at"] or session_dict["timeout_at"]:
+            return bool(session_dict["timeout_at"])
+        elapsed = elapsed_seconds_for_session(session_dict)
+        if elapsed <= QUESTIONNAIRE_TIME_LIMIT_SECONDS:
+            return False
+        db.mark_timeout(session_dict["id"], timeout_at_for_session(session_dict))
+        return True
 
     def summarize_session(session_id: str) -> dict[str, Any]:
         rows = [row for row in db.all_rows() if row["session"]["id"] == session_id]
         if not rows:
             return {"status": "none"}
         row = rows[0]
+        session_dict = dict(row["session"])
+        if ensure_not_timed_out(session_dict):
+            refreshed = db.admin_get_session(session_id)
+            session_dict = dict(refreshed["session"])
+            return {
+                "status": "timeout",
+                "participant_id": session_dict["participant_id"],
+                "next_task": None,
+                "next_stage": None,
+                "valid": False,
+                **timing_metadata(session_dict),
+            }
         answers: dict[str, str] = {}
         supervision: dict[str, str] = {}
         for task_response in row["responses"]:
@@ -98,6 +151,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         formal = score_answers(answers)
         supervision_scores = score_supervision(supervision)
         posttest_ready = row["session"]["current_task"] > 6 and not row["session"]["posttest_submitted_at"]
+        pretest_ready = row["session"]["current_task"] == 0
         complete = bool(row["session"]["completed_at"])
 
         # Compute per-task durations and total duration for quality checks
@@ -115,14 +169,15 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         quality_flags = timing_flags + pattern_flags
 
         return {
-            "status": "complete" if complete else "posttest" if posttest_ready else "in_progress",
+            "status": "complete" if complete else "pretest" if pretest_ready else "posttest" if posttest_ready else "in_progress",
             "participant_id": row["session"]["participant_id"],
             "next_task": None if row["session"]["current_task"] > 6 else row["session"]["current_task"],
-            "next_stage": None if complete else "posttest" if posttest_ready else "task",
+            "next_stage": None if complete else "pretest" if pretest_ready else "posttest" if posttest_ready else "task",
             "scores": {key: value for key, value in formal.items() if key != "per_question"},
             "supervision_scores": {key: value for key, value in supervision_scores.items() if key != "per_item"},
             "quality_flags": quality_flags,
             "valid": len(quality_flags) == 0,
+            **timing_metadata(session_dict),
         }
 
     def quality_flags_for_row(row: dict[str, Any]) -> list[str]:
@@ -142,6 +197,8 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         return check_timing(task_durations, total_seconds) + (check_response_pattern(answers) if answers else [])
 
     def completion_metadata(session: dict[str, Any], quality_flags: list[str]) -> dict[str, str | None]:
+        if session["timeout_at"]:
+            return {"completion_bucket": "incomplete", "incomplete_reason": "timeout"}
         if session["abandoned_at"]:
             return {"completion_bucket": "incomplete", "incomplete_reason": "abandoned"}
         if session["completed_at"] and not quality_flags:
@@ -156,6 +213,8 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         session = db.get_session(session_id)
         if not session or session["abandoned_at"]:
             raise HTTPException(status_code=404, detail="Session not found")
+        if ensure_not_timed_out(session):
+            raise HTTPException(status_code=410, detail="Session timed out. Please restart the questionnaire.")
         if task_id != session["current_task"] or task_id < 1 or task_id > 6:
             raise HTTPException(status_code=409, detail="This task is not available")
         db.mark_task_started(session_id, task_id)
@@ -168,6 +227,8 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         session = db.get_session(session_id)
         if not session or session["abandoned_at"]:
             raise HTTPException(status_code=404, detail="Session not found")
+        if ensure_not_timed_out(session):
+            raise HTTPException(status_code=410, detail="Session timed out. Please restart the questionnaire.")
         if task_id != session["current_task"] or task_id < 1 or task_id > 6:
             raise HTTPException(status_code=409, detail="This task is not available")
         required = set(task_question_ids(task_id))
@@ -182,6 +243,8 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         session = db.get_session(session_id)
         if not session or session["abandoned_at"]:
             raise HTTPException(status_code=404, detail="Session not found")
+        if ensure_not_timed_out(session):
+            raise HTTPException(status_code=410, detail="Session timed out. Please restart the questionnaire.")
         if session["current_task"] <= 6:
             raise HTTPException(status_code=409, detail="Posttest is not available")
         if session["posttest_submitted_at"]:
@@ -189,6 +252,11 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         return posttest_schema(lang)
 
     def submit_posttest_for_session(session_id: str, payload: PosttestPayload) -> dict[str, Any]:
+        session = db.get_session(session_id)
+        if not session or session["abandoned_at"]:
+            raise HTTPException(status_code=404, detail="Session not found")
+        if ensure_not_timed_out(session):
+            raise HTTPException(status_code=410, detail="Session timed out. Please restart the questionnaire.")
         data = payload.model_dump()
         missing = [field for field in POSTTEST_FIELDS if data.get(field) in ("", None)]
         if missing:
@@ -200,20 +268,43 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 
+    @app.post("/api/session/start")
+    def start_session(payload: AgreementPayload, response: Response) -> dict[str, Any]:
+        if payload.agreement != "I agree":
+            raise HTTPException(status_code=400, detail="Research notice agreement is required")
+        created = db.start_session(payload.agreement)
+        set_session_cookie(response, created["session_id"])
+        return {
+            "participant_id": created["participant_id"],
+            "next_stage": "pretest",
+            "time_limit_seconds": QUESTIONNAIRE_TIME_LIMIT_SECONDS,
+            "remaining_seconds": QUESTIONNAIRE_TIME_LIMIT_SECONDS,
+        }
+
     @app.post("/api/pretest")
-    def submit_pretest(payload: PretestPayload, response: Response) -> dict[str, Any]:
+    def submit_pretest(request: Request, payload: PretestPayload) -> dict[str, Any]:
+        session_id = cookie_session_id(request)
+        if not session_id:
+            raise HTTPException(status_code=401, detail="Research notice agreement is required before pretest")
+        session = db.get_session(session_id)
+        if not session or session["abandoned_at"]:
+            raise HTTPException(status_code=401, detail="No active session")
+        if ensure_not_timed_out(session):
+            raise HTTPException(status_code=410, detail="Session timed out. Please restart the questionnaire.")
         pretest = payload.model_dump()
         missing = [field for field in PRETEST_FIELDS if pretest.get(field) in ("", None)]
         if missing:
             raise HTTPException(status_code=400, detail=f"Missing required fields: {', '.join(missing)}")
         if pretest["consent"] != "I agree":
             raise HTTPException(status_code=400, detail="Consent is required")
-        created = db.create_session(pretest)
-        set_session_cookie(response, created["session_id"])
+        try:
+            saved = db.save_pretest(session_id, pretest)
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
         return {
-            "participant_id": created["participant_id"],
-            "next_task": created["next_task"],
-            "next_stage": "task",
+            "participant_id": session["participant_id"],
+            "next_task": saved["next_task"],
+            "next_stage": saved["next_stage"],
         }
 
     @app.get("/api/session/current")
@@ -300,6 +391,10 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         result = []
         for s in sessions:
             row = db.admin_get_session(s["id"])
+            if row and not s["completed_at"] and not s["abandoned_at"] and not s["timeout_at"]:
+                ensure_not_timed_out(s)
+                row = db.admin_get_session(s["id"])
+                s = row["session"]
             answers: dict[str, str] = {}
             for r in row["responses"]:
                 answers.update(decode_json(r["answers_json"]))
@@ -310,7 +405,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
                 "session_id": s["id"],
                 "participant_id": s["participant_id"],
                 "group": s["group_name"],
-                "status": "abandoned" if s["abandoned_at"] else "complete" if s["completed_at"] else "in_progress",
+                "status": "abandoned" if s["abandoned_at"] else "timeout" if s["timeout_at"] else "complete" if s["completed_at"] else "in_progress",
                 "current_task": s["current_task"],
                 "created_at": s["created_at"],
                 "completed_at": s["completed_at"],
@@ -318,6 +413,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
                 "total_score": scores["total_score"],
                 "valid": len(flags) == 0,
                 "quality_flags": flags,
+                "total_duration_hms": seconds_to_hms(elapsed_seconds_for_session(s)),
                 **completion,
             })
         return result
@@ -339,8 +435,10 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
             supervision.update(decode_json(r["supervision_json"]))
         scores = score_answers(answers)
         sup_scores = score_supervision(supervision)
+        session = dict(s)
+        session["total_duration_hms"] = seconds_to_hms(elapsed_seconds_for_session(session))
         return {
-            "session": dict(s),
+            "session": session,
             "pretest": pretest,
             "posttest": posttest,
             "answers": answers,

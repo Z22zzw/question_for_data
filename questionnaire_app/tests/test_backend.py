@@ -35,6 +35,21 @@ def pretest_payload() -> dict:
     }
 
 
+def start_session(client: TestClient):
+    response = client.post("/api/session/start", json={"agreement": "I agree"})
+    assert response.status_code == 200
+    assert SESSION_COOKIE_NAME in response.cookies
+    assert "httponly" in response.headers["set-cookie"].lower()
+    return response
+
+
+def submit_pretest(client: TestClient) -> dict:
+    start_session(client)
+    response = client.post("/api/pretest", json=pretest_payload())
+    assert response.status_code == 200
+    return response.json()
+
+
 def correct_answers(start: int, end: int) -> dict:
     key = {
         "Q1": "B",
@@ -130,6 +145,11 @@ def mark_valid_completion_times(db_path: Path, session_id: str) -> None:
             )
 
 
+def mark_session_started_at(db_path: Path, session_id: str, started_at: str) -> None:
+    with sqlite3.connect(db_path) as conn:
+        conn.execute("UPDATE sessions SET created_at = ? WHERE id = ?", (started_at, session_id))
+
+
 def admin_sessions(client: TestClient) -> list[dict]:
     response = client.get("/api/admin/sessions?password=secret&include_abandoned=true")
     assert response.status_code == 200
@@ -144,15 +164,11 @@ def test_pretest_assigns_hidden_balanced_groups(tmp_path: Path):
     client = make_client(tmp_path)
 
     for idx in range(4):
-        response = client.post("/api/pretest", json=pretest_payload())
-        assert response.status_code == 200
-        data = response.json()
+        data = submit_pretest(client)
         assert data["next_task"] == 1
         assert data["next_stage"] == "task"
         assert data["participant_id"] == idx + 1
         assert set(data.keys()) == {"participant_id", "next_task", "next_stage"}
-        assert SESSION_COOKIE_NAME in response.cookies
-        assert "httponly" in response.headers["set-cookie"].lower()
 
     sessions = client.get("/api/admin/sessions?password=secret").json()
     groups = [row["group"] for row in sessions]
@@ -160,10 +176,19 @@ def test_pretest_assigns_hidden_balanced_groups(tmp_path: Path):
     assert groups.count("B") == 2
 
 
+def test_pretest_requires_prior_research_notice_agreement(tmp_path: Path):
+    client = make_client(tmp_path)
+
+    response = client.post("/api/pretest", json=pretest_payload())
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Research notice agreement is required before pretest"
+
+
 def test_group_b_gets_supervision_cards_only_for_first_two_tasks(tmp_path: Path):
     client_a, client_b = make_two_clients(tmp_path)
-    client_a.post("/api/pretest", json=pretest_payload())
-    client_b.post("/api/pretest", json=pretest_payload())
+    submit_pretest(client_a)
+    submit_pretest(client_b)
 
     task1_a = client_a.get("/api/task/1").json()
     task1_b = client_b.get("/api/task/1").json()
@@ -188,7 +213,7 @@ def test_group_b_gets_supervision_cards_only_for_first_two_tasks(tmp_path: Path)
 
 def test_completed_task_cannot_be_read_or_modified(tmp_path: Path):
     client = make_client(tmp_path)
-    client.post("/api/pretest", json=pretest_payload())
+    submit_pretest(client)
 
     response = client.post(
         "/api/task/1",
@@ -208,7 +233,7 @@ def test_completed_task_cannot_be_read_or_modified(tmp_path: Path):
 
 def test_scoring_and_excel_export(tmp_path: Path):
     client = make_client(tmp_path)
-    pretest = client.post("/api/pretest", json=pretest_payload()).json()
+    pretest = submit_pretest(client)
 
     complete_all_tasks(client)
 
@@ -252,25 +277,50 @@ def test_scoring_and_excel_export(tmp_path: Path):
     assert "end_time" not in headers
 
 
+def test_timeout_marks_session_blocks_submissions_and_reports_duration(tmp_path: Path):
+    db_path = tmp_path / "test.sqlite"
+    app = create_app(db_path=db_path, admin_password="secret")
+    client = TestClient(app)
+
+    start_session(client)
+    session_id = latest_session_id(client)
+    mark_session_started_at(db_path, session_id, "2026-01-01T00:00:00+00:00")
+
+    current = client.get("/api/session/current").json()
+    assert current["status"] == "timeout"
+    assert current["next_stage"] is None
+    assert current["remaining_seconds"] == 0
+    assert current["elapsed_seconds"] >= 40 * 60
+
+    pretest_response = client.post("/api/pretest", json=pretest_payload())
+    assert pretest_response.status_code == 410
+    assert pretest_response.json()["detail"] == "Session timed out. Please restart the questionnaire."
+
+    row = admin_sessions(client)[0]
+    assert row["completion_bucket"] == "incomplete"
+    assert row["incomplete_reason"] == "timeout"
+    assert row["total_duration_hms"].startswith("00:40:")
+
+
 def test_admin_export_only_includes_normal_completed_sessions(tmp_path: Path):
     db_path = tmp_path / "test.sqlite"
     app = create_app(db_path=db_path, admin_password="secret")
     client = TestClient(app)
 
-    normal = client.post("/api/pretest", json=pretest_payload()).json()
+    normal = submit_pretest(client)
     complete_all_tasks(client)
     assert client.post("/api/posttest", json=posttest_payload()).status_code == 200
     normal_session_id = latest_session_id(client)
     mark_valid_completion_times(db_path, normal_session_id)
 
-    pending_posttest = client.post("/api/pretest", json=pretest_payload()).json()
+    pending_posttest = submit_pretest(client)
     complete_all_tasks(client)
 
-    abandoned = client.post("/api/pretest", json=pretest_payload()).json()
+    abandoned = submit_pretest(client)
     abandoned_session_id = latest_session_id(client)
     assert client.delete(f"/api/admin/sessions/{abandoned_session_id}?password=secret").status_code == 200
 
-    invalid_complete = client.post("/api/pretest", json=pretest_payload()).json()
+    invalid_complete = submit_pretest(client)
     complete_all_tasks(client)
     assert client.post("/api/posttest", json=posttest_payload()).status_code == 200
 
@@ -283,6 +333,7 @@ def test_admin_export_only_includes_normal_completed_sessions(tmp_path: Path):
     assert by_participant[abandoned["participant_id"]]["incomplete_reason"] == "abandoned"
     assert by_participant[invalid_complete["participant_id"]]["completion_bucket"] == "incomplete"
     assert by_participant[invalid_complete["participant_id"]]["incomplete_reason"] == "quality_failed"
+    assert by_participant[normal["participant_id"]]["total_duration_hms"] == "00:12:30"
 
     export_response = client.get("/api/admin/export?password=secret")
     assert export_response.status_code == 200
@@ -298,7 +349,7 @@ def test_admin_export_only_includes_normal_completed_sessions(tmp_path: Path):
 
 def test_task_can_be_localized_to_chinese(tmp_path: Path):
     client = make_client(tmp_path)
-    client.post("/api/pretest", json=pretest_payload())
+    submit_pretest(client)
 
     task = client.get("/api/task/1?lang=zh").json()
 
@@ -309,7 +360,7 @@ def test_task_can_be_localized_to_chinese(tmp_path: Path):
 def test_posttest_is_same_for_a_and_b_and_available_after_tasks(tmp_path: Path):
     clients = make_two_clients(tmp_path)
     for client in clients:
-        client.post("/api/pretest", json=pretest_payload())
+        submit_pretest(client)
 
     posttest_titles = []
     for client in clients:
@@ -332,8 +383,16 @@ def test_session_current_and_reset_use_cookie_not_local_storage_ids(tmp_path: Pa
 
     assert client.get("/api/session/current").json()["status"] == "none"
 
+    start_response = start_session(client)
+
+    current_pretest = client.get("/api/session/current").json()
+    assert current_pretest["status"] == "pretest"
+    assert current_pretest["next_stage"] == "pretest"
+    assert current_pretest["time_limit_seconds"] == 40 * 60
+    assert current_pretest["remaining_seconds"] <= 40 * 60
+
     pretest_response = client.post("/api/pretest", json=pretest_payload())
-    assert SESSION_COOKIE_NAME in pretest_response.cookies
+    assert start_response.cookies[SESSION_COOKIE_NAME] == client.cookies.get(SESSION_COOKIE_NAME)
 
     current = client.get("/api/session/current").json()
     assert current["status"] == "in_progress"
