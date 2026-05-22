@@ -45,6 +45,9 @@ def test_pretest_omits_age_and_gender_and_uses_major_dropdown():
     assert '["gender",' not in pretest_fields
     assert '["questionnaire_version", "select"]' in pretest_fields
     assert '["major", "select"]' in pretest_fields
+    assert "function pretestFieldsForVersion" in app_js
+    assert 'name !== "numpy_familiarity"' in app_js
+    assert "delete data.numpy_familiarity" in app_js
     assert "majorOptionsByVersion" in app_js
     assert "familiarityLabelsByVersion" in app_js
     assert '"C Language Proficiency"' in app_js

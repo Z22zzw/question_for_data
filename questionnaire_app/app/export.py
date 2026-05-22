@@ -9,7 +9,16 @@ from .questionnaire import ANSWER_KEY, POSTTEST_FIELDS, PRETEST_FIELDS, SUPERVIS
 from .scoring import score_answers, score_supervision
 
 
-def build_export_workbook(rows: list[dict]) -> bytes:
+def pretest_fields_for_export(version: str) -> list[str]:
+    return [
+        field
+        for field in PRETEST_FIELDS
+        if version == "python" or field != "numpy_familiarity"
+    ]
+
+
+def build_export_workbook(rows: list[dict], version: str = "python") -> bytes:
+    pretest_fields = pretest_fields_for_export(version)
     headers = [
         "session_id",
         "participant_id",
@@ -18,7 +27,7 @@ def build_export_workbook(rows: list[dict]) -> bytes:
     for task_id in range(1, 7):
         headers.append(f"task{task_id}_duration_hms")
     headers.append("total_duration_hms")
-    headers.extend(PRETEST_FIELDS)
+    headers.extend(pretest_fields)
     headers.extend(POSTTEST_FIELDS)
     headers.extend(ANSWER_KEY.keys())
     headers.extend(f"{qid}_score" for qid in ANSWER_KEY)
@@ -63,7 +72,7 @@ def build_export_workbook(rows: list[dict]) -> bytes:
             submit_time = submit_times.get(task_id)
             values.append(seconds_to_hms(seconds_between(start_time, submit_time)))
         values.append(seconds_to_hms(seconds_between(session["created_at"], session["completed_at"])))
-        values.extend(pretest.get(field) for field in PRETEST_FIELDS)
+        values.extend(pretest.get(field) for field in pretest_fields)
         values.extend(posttest.get(field) for field in POSTTEST_FIELDS)
         values.extend(answers.get(qid) for qid in ANSWER_KEY)
         values.extend(formal_scores["per_question"].get(qid, 0) for qid in ANSWER_KEY)

@@ -20,7 +20,7 @@ def make_two_clients(tmp_path: Path) -> tuple[TestClient, TestClient]:
 
 
 def pretest_payload(version: str = "python") -> dict:
-    return {
+    payload = {
         "consent": "I agree",
         "questionnaire_version": version,
         "grade_year": "Year 3",
@@ -28,10 +28,12 @@ def pretest_payload(version: str = "python") -> dict:
         "programming_experience_years": "3-4",
         "python_familiarity": "4",
         "file_io_familiarity": "3",
-        "numpy_familiarity": "3",
         "ai_tool_use_frequency": "Often",
         "ai_code_review_experience": "Sometimes",
     }
+    if version == "python":
+        payload["numpy_familiarity"] = "3"
+    return payload
 
 
 def start_session(client: TestClient):
@@ -210,6 +212,16 @@ def test_python_and_c_versions_use_isolated_databases(tmp_path: Path):
     assert python_sessions[0]["questionnaire_version"] == "python"
     assert c_sessions[0]["questionnaire_version"] == "c"
 
+    python_detail = python_client.get(
+        f"/api/admin/sessions/{python_sessions[0]['session_id']}?password=secret&version=python"
+    ).json()
+    c_detail = python_client.get(
+        f"/api/admin/sessions/{c_sessions[0]['session_id']}?password=secret&version=c"
+    ).json()
+
+    assert python_detail["pretest"]["numpy_familiarity"] == "3"
+    assert "numpy_familiarity" not in c_detail["pretest"]
+
 
 def test_admin_bulk_delete_applies_only_to_selected_version(tmp_path: Path):
     db_path = tmp_path / "test.sqlite"
@@ -338,6 +350,52 @@ def test_scoring_and_excel_export(tmp_path: Path):
     assert "start_time" not in headers
     assert "pretest_submit_time" not in headers
     assert "end_time" not in headers
+
+
+def test_admin_export_uses_selected_version_and_c_omits_numpy(tmp_path: Path):
+    db_path = tmp_path / "test.sqlite"
+    app = create_app(db_path=db_path, admin_password="secret")
+    client = TestClient(app)
+
+    python_pretest = submit_pretest(client, "python")
+    complete_all_tasks(client)
+    assert client.post("/api/posttest", json=posttest_payload()).status_code == 200
+    python_session_id = latest_session_id(client)
+    mark_valid_completion_times(db_path, python_session_id)
+
+    c_pretest = submit_pretest(client, "c")
+    complete_all_tasks(client)
+    assert client.post("/api/posttest", json=posttest_payload()).status_code == 200
+    c_sessions = client.get("/api/admin/sessions?password=secret&version=c").json()
+    c_session_id = c_sessions[0]["session_id"]
+    mark_valid_completion_times(db_path.with_name("test_c.sqlite"), c_session_id)
+
+    python_export = client.get("/api/admin/export?password=secret&version=python")
+    c_export = client.get("/api/admin/export?password=secret&version=c")
+
+    assert python_export.status_code == 200
+    assert c_export.status_code == 200
+    assert "questionnaire_python_normal_completed_export.xlsx" in python_export.headers["content-disposition"]
+    assert "questionnaire_c_normal_completed_export.xlsx" in c_export.headers["content-disposition"]
+
+    python_path = tmp_path / "python_export.xlsx"
+    c_path = tmp_path / "c_export.xlsx"
+    python_path.write_bytes(python_export.content)
+    c_path.write_bytes(c_export.content)
+
+    python_sheet = load_workbook(python_path).active
+    c_sheet = load_workbook(c_path).active
+    python_headers = [cell.value for cell in python_sheet[1]]
+    c_headers = [cell.value for cell in c_sheet[1]]
+    python_row = dict(zip(python_headers, [cell.value for cell in python_sheet[2]]))
+    c_row = dict(zip(c_headers, [cell.value for cell in c_sheet[2]]))
+
+    assert "numpy_familiarity" in python_headers
+    assert "numpy_familiarity" not in c_headers
+    assert python_row["participant_id"] == python_pretest["participant_id"]
+    assert c_row["participant_id"] == c_pretest["participant_id"]
+    assert python_row["questionnaire_version"] == "python"
+    assert c_row["questionnaire_version"] == "c"
 
 
 def test_timeout_marks_session_blocks_submissions_and_reports_duration(tmp_path: Path):

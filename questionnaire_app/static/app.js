@@ -391,6 +391,10 @@ const pretestFields = [
   ["ai_code_review_experience", "select"],
 ];
 
+function pretestFieldsForVersion(version) {
+  return pretestFields.filter(([name]) => version === "python" || name !== "numpy_familiarity");
+}
+
 function t(key) {
   return i18n[state.lang][key];
 }
@@ -533,7 +537,9 @@ function draftKey(name) {
 }
 
 function readForm(form) {
-  return Object.fromEntries(new FormData(form).entries());
+  const data = Object.fromEntries(new FormData(form).entries());
+  if (data.questionnaire_version === "c") delete data.numpy_familiarity;
+  return data;
 }
 
 function restoreForm(form, key) {
@@ -724,7 +730,7 @@ function renderPretest() {
   timerLabel.classList.remove("warning");
   const draftData = readDraftData("pretest");
   const selectedVersion = draftData.questionnaire_version === "c" ? "c" : "python";
-  const fields = pretestFields
+  const fields = pretestFieldsForVersion(selectedVersion)
     .map(([name, type]) => {
       const label = pretestFieldLabel(name, selectedVersion);
       if (type === "select") {

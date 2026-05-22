@@ -36,7 +36,7 @@ class PretestPayload(BaseModel):
     programming_experience_years: str
     python_familiarity: str
     file_io_familiarity: str
-    numpy_familiarity: str
+    numpy_familiarity: str | None = None
     ai_tool_use_frequency: str
     ai_code_review_experience: str
 
@@ -140,11 +140,19 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         started_at = datetime.fromisoformat(session["created_at"])
         return (started_at + timedelta(seconds=QUESTIONNAIRE_TIME_LIMIT_SECONDS)).isoformat()
 
+    def pretest_fields_for_version(version: str) -> list[str]:
+        return [
+            field
+            for field in PRETEST_FIELDS
+            if version == "python" or field != "numpy_familiarity"
+        ]
+
     def has_submitted_pretest(session: dict[str, Any]) -> bool:
         pretest = decode_json(session["pretest_json"])
+        version = normalize_questionnaire_version(pretest.get("questionnaire_version"))
         return all(
             field == "questionnaire_version" or pretest.get(field) not in ("", None)
-            for field in PRETEST_FIELDS
+            for field in pretest_fields_for_version(version)
         )
 
     def elapsed_seconds_for_session(session: dict[str, Any]) -> int:
@@ -380,7 +388,9 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         version = normalize_version_or_400(pretest.get("questionnaire_version"))
         pretest["questionnaire_version"] = version
         db = dbs[version]
-        missing = [field for field in PRETEST_FIELDS if pretest.get(field) in ("", None)]
+        if version == "c":
+            pretest.pop("numpy_familiarity", None)
+        missing = [field for field in pretest_fields_for_version(version) if pretest.get(field) in ("", None)]
         if missing:
             raise HTTPException(status_code=400, detail=f"Missing required fields: {', '.join(missing)}")
         if pretest["consent"] != "I agree":
@@ -502,7 +512,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
             if completion_metadata(dict(row["session"]), quality_flags_for_row(row))["completion_bucket"]
             == "normal_completed"
         ]
-        content = build_export_workbook(normal_completed_rows)
+        content = build_export_workbook(normal_completed_rows, normalized)
         return Response(
             content,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
