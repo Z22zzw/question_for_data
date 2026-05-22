@@ -22,10 +22,8 @@ def make_two_clients(tmp_path: Path) -> tuple[TestClient, TestClient]:
 def pretest_payload() -> dict:
     return {
         "consent": "I agree",
-        "age": 20,
-        "gender": "Prefer not to say",
         "grade_year": "Year 3",
-        "major": "Computer Science",
+        "major": "计算机类",
         "programming_experience_years": "3-4",
         "python_familiarity": "4",
         "file_io_familiarity": "3",

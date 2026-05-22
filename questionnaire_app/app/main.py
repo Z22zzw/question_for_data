@@ -22,8 +22,6 @@ QUESTIONNAIRE_TIME_LIMIT_SECONDS = 40 * 60
 
 class PretestPayload(BaseModel):
     consent: str
-    age: int
-    gender: str
     grade_year: str
     major: str
     programming_experience_years: str

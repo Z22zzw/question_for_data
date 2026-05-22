@@ -244,8 +244,6 @@ POSTTEST_FIELDS = [question["id"] for question in POSTTEST_QUESTIONS]
 
 PRETEST_FIELDS = [
     "consent",
-    "age",
-    "gender",
     "grade_year",
     "major",
     "programming_experience_years",

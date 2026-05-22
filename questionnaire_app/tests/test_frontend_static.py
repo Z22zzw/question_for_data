@@ -35,6 +35,22 @@ def test_frontend_resumes_from_server_current_session_endpoint():
     assert 'api("/api/session/current")' in app_js
 
 
+def test_pretest_omits_age_and_gender_and_uses_major_dropdown():
+    app_js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+    fields_start = app_js.index("const pretestFields = [")
+    fields_end = app_js.index("];", fields_start)
+    pretest_fields = app_js[fields_start:fields_end]
+
+    assert '["age",' not in pretest_fields
+    assert '["gender",' not in pretest_fields
+    assert '["major", "select"]' in pretest_fields
+    assert '"计算机类"' in app_js
+    assert '"电子信息类"' in app_js
+    assert '"自动化类"' in app_js
+    assert '"电气类"' in app_js
+    assert '"机械类"' in app_js
+
+
 def test_frontend_shows_research_notice_after_pretest_and_tracks_time():
     index_html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
     app_js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")

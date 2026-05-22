@@ -102,8 +102,6 @@ const i18n = {
     requiredQuestionWarning: "Please answer this question before submitting.",
     resetHome: "New Session",
     fields: {
-      age: "Age",
-      gender: "Gender",
       grade_year: "Grade Year",
       major: "Major",
       programming_experience_years: "Programming Experience",
@@ -209,8 +207,6 @@ const i18n = {
     requiredQuestionWarning: "请先回答这个问题。",
     resetHome: "回到首页",
     fields: {
-      age: "年龄",
-      gender: "性别",
       grade_year: "年级",
       major: "专业",
       programming_experience_years: "编程经验",
@@ -224,15 +220,15 @@ const i18n = {
 };
 
 const optionLabels = {
-  gender: {
-    en: ["Female", "Male", "Non-binary", "Prefer not to say"],
-    zh: ["女性", "男性", "非二元", "不愿透露"],
-    values: ["Female", "Male", "Non-binary", "Prefer not to say"],
-  },
   grade_year: {
     en: ["Year 1", "Year 2", "Year 3", "Year 4", "Master", "PhD", "Other"],
     zh: ["大一", "大二", "大三", "大四", "硕士", "博士", "其他"],
     values: ["Year 1", "Year 2", "Year 3", "Year 4", "Master", "PhD", "Other"],
+  },
+  major: {
+    en: ["计算机类", "电子信息类", "自动化类", "电气类", "机械类"],
+    zh: ["计算机类", "电子信息类", "自动化类", "电气类", "机械类"],
+    values: ["计算机类", "电子信息类", "自动化类", "电气类", "机械类"],
   },
   programming_experience_years: {
     en: ["Less than 1", "1-2", "3-4", "5 or more"],
@@ -353,10 +349,8 @@ function renderIntroModal() {
 }
 
 const pretestFields = [
-  ["age", "number"],
-  ["gender", "select"],
   ["grade_year", "select"],
-  ["major", "text"],
+  ["major", "select"],
   ["programming_experience_years", "select"],
   ["python_familiarity", "select"],
   ["file_io_familiarity", "select"],
@@ -507,9 +501,7 @@ function draftKey(name) {
 }
 
 function readForm(form) {
-  const data = Object.fromEntries(new FormData(form).entries());
-  if (data.age) data.age = Number(data.age);
-  return data;
+  return Object.fromEntries(new FormData(form).entries());
 }
 
 function restoreForm(form, key) {
