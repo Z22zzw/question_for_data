@@ -12,7 +12,7 @@ def test_task_page_renders_supervision_card_between_description_and_questions():
 
     description_index = task_template.index('<ol class="requirements">${task.requirements')
     supervision_index = task_template.index("${supervision}")
-    questions_index = task_template.index('<section class="task-block">${questions}</section>')
+    questions_index = task_template.index("${questions}")
 
     assert description_index < supervision_index < questions_index
 
@@ -54,6 +54,31 @@ def test_frontend_shows_research_notice_after_pretest_and_tracks_time():
     assert "function setOverallProgress" in app_js
 
 
+def test_frontend_has_two_stage_guidance_modals_and_modal_language_switch():
+    index_html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
+    app_js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+
+    assert 'rel="icon"' in index_html
+    assert "function renderIntroModal" in app_js
+    assert "function renderModalLanguageButton" in app_js
+    assert "introPurpose" in app_js
+    assert "introNotInterested" in app_js
+    assert "notInterestedText" in app_js
+    assert "noticeSections" in app_js
+    assert "modal-language" in app_js
+
+
+def test_frontend_task_page_explains_how_to_answer_and_supervision_card_role():
+    app_js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+
+    assert "taskGuideTitle" in app_js
+    assert "taskGuideSteps" in app_js
+    assert "taskSectionLabels" in app_js
+    assert "supervisionIntro" in app_js
+    assert "正式问题" in app_js
+    assert "AI 生成的代码" in app_js
+
+
 def test_frontend_scrolls_to_first_unanswered_required_group():
     app_js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
     styles = (ROOT / "static" / "styles.css").read_text(encoding="utf-8")
@@ -61,7 +86,18 @@ def test_frontend_scrolls_to_first_unanswered_required_group():
     assert "function validateRequiredRadioGroups" in app_js
     assert "scrollIntoView" in app_js
     assert "unanswered" in app_js
+    assert "requiredQuestionWarning" in app_js
     assert ".question.unanswered" in styles
+
+
+def test_mobile_layout_prevents_page_level_horizontal_overflow():
+    styles = (ROOT / "static" / "styles.css").read_text(encoding="utf-8")
+
+    assert "overflow-x: hidden" in styles
+    assert ".task-block" in styles
+    assert "min-width: 0" in styles
+    assert "overflow-wrap: anywhere" in styles
+    assert "max-width: 100%" in styles
 
 
 def test_admin_page_has_completion_and_incomplete_reason_filters():

@@ -14,9 +14,42 @@ const i18n = {
     pretest: "Pretest",
     pretestTitle: "Pretest Information",
     pretestHint: "Please complete the shared pretest before entering the task section. Your participant ID will be assigned automatically.",
+    introTitle: "Welcome to the AI Code Supervision Study",
+    introPurpose: "This study examines how people judge AI-generated code: whether it satisfies task requirements, whether it can be submitted, and whether hidden errors can be identified.",
+    introSections: [
+      {
+        title: "What will you do?",
+        body: "You will first answer background questions, then review six AI-generated code answers, and finally complete a short post-task questionnaire.",
+      },
+      {
+        title: "How should you answer?",
+        body: "Read the requirements, inspect the AI code, reason through the given inputs, and choose the option that best matches your own judgment.",
+      },
+    ],
+    introContinue: "Continue to Pretest",
+    introNotInterested: "I do not want to participate",
+    notInterestedText: "No other action is required. You may close this page now.",
     consent: "Consent",
     noticeTitle: "Research Notice and Rules",
     noticeIntro: "Please read the following rules carefully before starting.",
+    noticeSections: [
+      {
+        title: "Research Purpose",
+        body: "This questionnaire studies AI code supervision ability: understanding requirements, tracing AI-generated code, identifying output problems, and judging delivery risk.",
+      },
+      {
+        title: "What will happen if you participate?",
+        body: "You will complete a pretest, six formal tasks, and a posttest. The formal response stage is limited to 40 minutes.",
+      },
+      {
+        title: "Data and Rules",
+        body: "The study records responses, progress, group assignment, submission time, and response duration for academic research and statistical analysis only. Please answer independently without AI tools, search engines, coding assistants, or help from others.",
+      },
+      {
+        title: "If you are no longer interested",
+        body: "Participation is voluntary. If you do not want to continue, choose Cancel or close this page.",
+      },
+    ],
     noticeRules: [
       "This questionnaire includes a pretest, formal tasks, and a posttest. The total formal response time is limited to 40 minutes. Timing starts after you click “Agree and Start”; page refreshes, closing the page, disconnections, and re-entry all count toward the total time.",
       "Please complete the questionnaire independently. Do not use AI tools, search engines, coding assistants, or help from others to gain answer-related assistance.",
@@ -40,7 +73,21 @@ const i18n = {
     disagree: "I do not agree",
     start: "Start Tasks",
     taskProgress: (id) => `Task ${id} / 6`,
+    taskGuideTitle: "How to Answer",
+    taskGuideSteps: [
+      "Read the task requirements first: they define what the correct code should do.",
+      "Then read the AI-generated code and reason about what it actually does.",
+      "For “What will the AI code return?”, answer according to the code behavior. For “What should the correct return value be?”, answer according to the requirements.",
+      "Judge whether the AI answer satisfies the task and whether it can be submitted directly.",
+    ],
+    taskSectionLabels: {
+      requirements: "Task Requirements",
+      aiCode: "AI-generated Code",
+      questions: "Formal Questions",
+      givenInput: "Given Input",
+    },
     supervisionCard: "Supervision Card",
+    supervisionIntro: "This card helps you review the AI code step by step. Answer it based on your own judgment; it is not an answer key.",
     submitTask: "Submit Task",
     submitAll: "Submit Questionnaire",
     posttestProgress: "Posttest",
@@ -52,6 +99,7 @@ const i18n = {
     offline: "Network is unavailable. Your current responses are cached locally.",
     pending: "A saved submission is waiting for the network to recover.",
     restored: "Local draft restored.",
+    requiredQuestionWarning: "Please answer this question before submitting.",
     resetHome: "New Session",
     fields: {
       age: "Age",
@@ -73,9 +121,42 @@ const i18n = {
     pretest: "前测",
     pretestTitle: "前测信息",
     pretestHint: "请先完成 A/B 共用前测。参与者 ID 将由系统自动分配。",
+    introTitle: "欢迎参加 AI 代码监督能力研究",
+    introPurpose: "本研究关注你如何判断 AI 生成代码：是否满足任务要求、是否可以直接提交，以及能否识别其中隐藏的问题。",
+    introSections: [
+      {
+        title: "你将做什么？",
+        body: "你会先填写背景信息，然后审查 6 份 AI 生成代码答案，最后完成一份简短后测问卷。",
+      },
+      {
+        title: "应该怎么作答？",
+        body: "请先读任务要求，再看 AI 代码，结合给定输入进行推理，并选择最符合你判断的选项。",
+      },
+    ],
+    introContinue: "进入前测",
+    introNotInterested: "我不想参加",
+    notInterestedText: "无需进行其他操作。你可以直接关闭本页面。",
     consent: "知情同意",
     noticeTitle: "研究告知书与作答规则",
     noticeIntro: "请在开始前仔细阅读以下说明：",
+    noticeSections: [
+      {
+        title: "研究目的",
+        body: "本问卷用于研究 AI 代码监督能力，包括理解任务要求、追踪 AI 生成代码、识别输出问题，以及判断代码交付风险。",
+      },
+      {
+        title: "参与后会发生什么？",
+        body: "你将完成前测、6 个正式任务和后测。正式作答阶段限时 40 分钟。",
+      },
+      {
+        title: "数据与规则",
+        body: "本研究会记录作答结果、进度、分组、提交时间和作答耗时，仅用于学术研究与统计分析。请独立作答，不使用 AI 工具、搜索引擎、代码助手或他人协助。",
+      },
+      {
+        title: "如果你不想继续参加",
+        body: "参与完全自愿。如果你不想继续，可以点击取消或关闭本页面。",
+      },
+    ],
     noticeRules: [
       "本次问卷包含前测、正式任务和后测，正式作答总时长限制为 40 分钟。计时从点击“同意并开始作答”后开始，页面刷新、关闭、断线或重新进入均计入总计时。",
       "作答过程中请独立完成，不得使用 AI 工具、搜索引擎、代码助手或他人协助来获取答案便利。",
@@ -99,7 +180,21 @@ const i18n = {
     disagree: "I do not agree",
     start: "开始任务",
     taskProgress: (id) => `任务 ${id} / 6`,
+    taskGuideTitle: "如何作答",
+    taskGuideSteps: [
+      "先阅读任务要求：它定义了正确代码应该完成什么。",
+      "再阅读 AI 生成的代码，推理代码实际会做什么。",
+      "遇到“AI 代码会返回什么”时，请按代码行为作答；遇到“正确返回值应该是什么”时，请按任务要求作答。",
+      "最后判断这份 AI 答案是否满足要求，以及是否可以直接提交。",
+    ],
+    taskSectionLabels: {
+      requirements: "任务要求",
+      aiCode: "AI 生成的代码",
+      questions: "正式问题",
+      givenInput: "给定输入",
+    },
     supervisionCard: "监督卡",
+    supervisionIntro: "监督卡用于帮助你按步骤审查 AI 代码。请根据自己的判断填写；它不是答案提示。",
     submitTask: "提交本任务",
     submitAll: "提交问卷",
     posttestProgress: "后测",
@@ -111,6 +206,7 @@ const i18n = {
     offline: "当前网络不可用。本页作答已缓存在本地。",
     pending: "有一份提交已保存在本地，网络恢复后会自动重试。",
     restored: "已恢复本地草稿。",
+    requiredQuestionWarning: "请先回答这个问题。",
     resetHome: "回到首页",
     fields: {
       age: "年龄",
@@ -180,6 +276,81 @@ const state = {
 };
 
 let timerInterval = null;
+let activeModal = null;
+let showNotInterestedMessage = false;
+
+function ensureModalRoot() {
+  let root = document.getElementById("modalRoot");
+  if (!root) {
+    root = document.createElement("div");
+    root.id = "modalRoot";
+    document.body.appendChild(root);
+  }
+  return root;
+}
+
+function closeModal() {
+  const root = ensureModalRoot();
+  root.innerHTML = "";
+  activeModal = null;
+  showNotInterestedMessage = false;
+}
+
+function renderModalLanguageButton() {
+  return `<button class="ghost modal-language" id="modalLanguageToggle" type="button">${t("switchLabel")}</button>`;
+}
+
+function renderModal(html) {
+  const root = ensureModalRoot();
+  root.innerHTML = `
+    <div class="modal-overlay" role="presentation">
+      <section class="modal-dialog" role="dialog" aria-modal="true">
+        ${html}
+      </section>
+    </div>
+  `;
+  document.getElementById("modalLanguageToggle")?.addEventListener("click", () => setLanguage(state.lang === "en" ? "zh" : "en"));
+}
+
+function maybeShowIntroModal() {
+  if (sessionStorage.getItem("questionnaire_intro_seen") || activeModal) return;
+  renderIntroModal();
+}
+
+function renderIntroModal() {
+  activeModal = "intro";
+  const sections = t("introSections")
+    .map(
+      (section) => `
+        <section class="modal-section">
+          <h3>${escapeHtml(section.title)}</h3>
+          <p>${escapeHtml(section.body)}</p>
+        </section>
+      `
+    )
+    .join("");
+  renderModal(`
+    <div class="modal-header">
+      <h2>${t("introTitle")}</h2>
+      ${renderModalLanguageButton()}
+    </div>
+    <p class="modal-lead">${t("introPurpose")}</p>
+    ${sections}
+    ${showNotInterestedMessage ? `<p class="status error">${t("notInterestedText")}</p>` : ""}
+    <div class="actions">
+      <button class="ghost" type="button" id="introNotInterested">${t("introNotInterested")}</button>
+      <button class="primary" type="button" id="introContinue">${t("introContinue")}</button>
+    </div>
+  `);
+  document.getElementById("introContinue").onclick = () => {
+    sessionStorage.setItem("questionnaire_intro_seen", "1");
+    closeModal();
+  };
+  document.getElementById("introNotInterested").onclick = () => {
+    showNotInterestedMessage = true;
+    renderIntroModal();
+  };
+}
 
 const pretestFields = [
   ["age", "number"],
@@ -277,6 +448,7 @@ async function handleTimeout() {
 }
 
 function setLanguage(lang) {
+  const modalBeforeLanguageChange = activeModal;
   state.lang = lang;
   localStorage.setItem("questionnaire_lang", lang);
   document.querySelectorAll("[data-i18n]").forEach((node) => {
@@ -299,6 +471,11 @@ function setLanguage(lang) {
   } else {
     progressLabel.textContent = t("pretest");
     setOverallProgress("none");
+  }
+  if (modalBeforeLanguageChange === "intro") {
+    renderIntroModal();
+  } else if (modalBeforeLanguageChange === "notice" && state.status === "notice") {
+    renderResearchNotice();
   }
 }
 
@@ -402,32 +579,51 @@ function renderResearchNotice() {
   state.nextStage = "notice";
   state.nextTask = null;
   state.expiresAt = null;
+  activeModal = "notice";
   progressLabel.textContent = t("consent");
   setOverallProgress("pretest");
   timerLabel.textContent = formatClock(state.timeLimitSeconds);
   timerLabel.classList.remove("warning");
   view.innerHTML = `
-    <form id="noticeForm" class="task-layout">
-      <section class="task-block">
+    <section class="task-block">
+      <h2>${t("noticeTitle")}</h2>
+      <p class="status">${t("noticeIntro")}</p>
+    </section>
+  `;
+  const sections = t("noticeSections")
+    .map(
+      (section) => `
+        <section class="modal-section">
+          <h3>${escapeHtml(section.title)}</h3>
+          <p>${escapeHtml(section.body)}</p>
+        </section>
+      `
+    )
+    .join("");
+  renderModal(`
+    <form id="noticeForm" class="modal-form">
+      <div class="modal-header">
         <h2>${t("noticeTitle")}</h2>
-        <p class="status">${t("noticeIntro")}</p>
-        <ol class="notice-list">
-          ${t("noticeRules").map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
-        </ol>
-        <label class="agreement">
-          <input type="checkbox" name="agreement" value="I agree" required />
-          <span>${t("noticeAgreement")}</span>
-        </label>
-      </section>
+        ${renderModalLanguageButton()}
+      </div>
+      <p class="modal-lead">${t("noticeIntro")}</p>
+      ${sections}
+      <ol class="notice-list">
+        ${t("noticeRules").map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+      </ol>
+      <label class="agreement">
+        <input type="checkbox" name="agreement" value="I agree" required />
+        <span>${t("noticeAgreement")}</span>
+      </label>
       <div class="actions">
         <button class="ghost" type="button" id="noticeCancel">${t("noticeCancel")}</button>
         <button class="primary" type="submit">${t("noticeStart")}</button>
       </div>
       <p class="status error" id="error"></p>
     </form>
-  `;
+  `);
 
-  document.getElementById("noticeCancel").onclick = () => renderResearchNotice();
+  document.getElementById("noticeCancel").onclick = resetToHome;
   document.getElementById("noticeForm").addEventListener("submit", async (event) => {
     event.preventDefault();
     try {
@@ -435,6 +631,7 @@ function renderResearchNotice() {
       state.status = "in_progress";
       state.nextStage = result.next_stage;
       state.nextTask = result.next_task;
+      closeModal();
       setTimerFromSession(result);
       await loadTask(state.nextTask);
     } catch (error) {
@@ -521,6 +718,7 @@ function renderPretest() {
       document.getElementById("error").textContent = error.message;
     }
   });
+  maybeShowIntroModal();
 }
 
 function renderOptions(fieldName, options, values) {
@@ -539,6 +737,8 @@ function renderOptions(fieldName, options, values) {
 }
 
 function validateRequiredRadioGroups(form) {
+  const error = form.querySelector("#error");
+  if (error) error.textContent = "";
   form.querySelectorAll(".question.unanswered").forEach((node) => {
     node.classList.remove("unanswered");
     node.querySelector(".question-warning")?.remove();
@@ -551,8 +751,9 @@ function validateRequiredRadioGroups(form) {
       question.classList.add("unanswered");
       const warning = document.createElement("p");
       warning.className = "question-warning";
-      warning.textContent = state.lang === "zh" ? "请先回答这个问题。" : "Please answer this question before submitting.";
+      warning.textContent = t("requiredQuestionWarning");
       question.appendChild(warning);
+      if (error) error.textContent = t("requiredQuestionWarning");
       question.scrollIntoView({ behavior: "smooth", block: "center" });
       group[0].focus({ preventScroll: true });
       return false;
@@ -574,10 +775,20 @@ async function loadTask(taskId) {
 }
 
 function renderTask(task) {
+  const sectionLabels = t("taskSectionLabels");
+  const taskGuide = `
+    <section class="task-guide">
+      <h2>${t("taskGuideTitle")}</h2>
+      <ol>
+        ${t("taskGuideSteps").map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+      </ol>
+    </section>
+  `;
   const supervision = task.supervision_card
     ? `
       <section class="supervision">
         <h3>${t("supervisionCard")}</h3>
+        <p class="status">${t("supervisionIntro")}</p>
         ${task.supervision_card
           .map(
             (item) => `
@@ -598,7 +809,7 @@ function renderTask(task) {
       (question) => `
         <div class="question">
           <h3>${escapeHtml(question.id)}</h3>
-          ${question.context ? `<p class="context">${escapeHtml(question.context)}</p>` : ""}
+          ${question.context ? `<p class="context-label">${sectionLabels.givenInput}</p><p class="context">${escapeHtml(question.context)}</p>` : ""}
           <p>${escapeHtml(question.prompt)}</p>
           <div class="options">${renderOptions(question.id, question.options)}</div>
         </div>
@@ -607,14 +818,20 @@ function renderTask(task) {
     .join("");
 
   view.innerHTML = `
-    <form id="taskForm" class="task-layout">
+    <form id="taskForm" class="task-layout" novalidate>
+      ${taskGuide}
       <section class="task-block">
         <h2>${escapeHtml(task.title)}</h2>
+        <h3>${sectionLabels.requirements}</h3>
         <ol class="requirements">${task.requirements.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ol>
+        <h3 class="section-subtitle">${sectionLabels.aiCode}</h3>
         <pre><code>${escapeHtml(task.code)}</code></pre>
       </section>
       ${supervision}
-      <section class="task-block">${questions}</section>
+      <section class="task-block">
+        <h2>${sectionLabels.questions}</h2>
+        ${questions}
+      </section>
       <div class="actions">
         <button class="primary" type="submit">${task.id === 6 ? t("submitAll") : t("submitTask")}</button>
       </div>
@@ -714,7 +931,7 @@ function renderPosttest(schema) {
     .join("");
 
   view.innerHTML = `
-    <form id="posttestForm" class="task-layout">
+    <form id="posttestForm" class="task-layout" novalidate>
       <section class="task-block">
         <h2>${escapeHtml(schema.title)}</h2>
         <p class="status">${escapeHtml(schema.intro)}</p>
@@ -773,6 +990,7 @@ async function resetToHome() {
   } catch {
     // If offline, still clear browser-side drafts so the user can restart locally.
   }
+  closeModal();
   clearQuestionnaireLocalState();
   state.status = "none";
   state.nextStage = null;

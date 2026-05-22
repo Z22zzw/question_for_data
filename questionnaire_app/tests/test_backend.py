@@ -369,6 +369,13 @@ def test_task_can_be_localized_to_chinese(tmp_path: Path):
 
     assert task["title"].startswith("任务 1")
     assert "这份 AI 答案" in task["questions"][0]["prompt"]
+    q5_options = [option["text"] for option in task["questions"][4]["options"]]
+    assert q5_options == [
+        "VIP 折扣计算错误",
+        "未知商品 ID 被当作价格 0 处理",
+        "没有保留两位小数",
+        "运费规则完全反了",
+    ]
 
 
 def test_posttest_is_same_for_a_and_b_and_available_after_tasks(tmp_path: Path):
