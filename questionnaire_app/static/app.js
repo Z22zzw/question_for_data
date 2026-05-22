@@ -435,6 +435,7 @@ function clearQuestionnaireLocalState() {
       localStorage.removeItem(key);
     }
   }
+  sessionStorage.removeItem("questionnaire_intro_seen");
 }
 
 async function handleTimeout() {
@@ -474,8 +475,6 @@ function setLanguage(lang) {
   }
   if (modalBeforeLanguageChange === "intro") {
     renderIntroModal();
-  } else if (modalBeforeLanguageChange === "notice" && state.status === "notice") {
-    renderResearchNotice();
   }
 }
 
