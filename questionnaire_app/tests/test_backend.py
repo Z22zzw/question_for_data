@@ -427,6 +427,21 @@ def test_task_can_be_localized_to_chinese(tmp_path: Path):
     ]
 
 
+def test_c_task_can_be_localized_to_chinese(tmp_path: Path):
+    client_a, client_b = make_two_clients(tmp_path)
+    submit_pretest(client_a, "c")
+    submit_pretest(client_b, "c")
+
+    task = client_b.get("/api/task/1?lang=zh").json()
+
+    assert task["title"].startswith("C 任务 1")
+    assert "商品编号不存在" in task["requirements"][2]
+    assert task["questions"][0]["prompt"] == "这份 AI 生成的 C 语言答案是否完全满足任务要求？"
+    assert task["questions"][4]["options"][1]["text"] == "未知商品编号被按 0 元处理"
+    assert task["supervision_card"][0]["dimension"] == "问题定义能力"
+    assert "返回 -1" in task["supervision_card"][0]["prompt"]
+
+
 def test_posttest_is_same_for_a_and_b_and_available_after_tasks(tmp_path: Path):
     clients = make_two_clients(tmp_path)
     for client in clients:

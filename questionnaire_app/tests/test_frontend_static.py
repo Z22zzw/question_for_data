@@ -46,6 +46,9 @@ def test_pretest_omits_age_and_gender_and_uses_major_dropdown():
     assert '["questionnaire_version", "select"]' in pretest_fields
     assert '["major", "select"]' in pretest_fields
     assert "majorOptionsByVersion" in app_js
+    assert "familiarityLabelsByVersion" in app_js
+    assert '"C Language Proficiency"' in app_js
+    assert '"C 语言掌握程度"' in app_js
     assert '"计算机类"' in app_js
     assert '"计算机科学与技术"' in app_js
     assert '"网络空间安全"' in app_js
@@ -53,6 +56,15 @@ def test_pretest_omits_age_and_gender_and_uses_major_dropdown():
     assert '"物联网工程"' in app_js
     assert '"智能科技与技术"' in app_js
     assert '"软件工程"' in app_js
+
+
+def test_c_answer_key_markdown_exists():
+    answer_key = (ROOT / "docs" / "c_questionnaire_answer_key.md").read_text(encoding="utf-8")
+
+    assert "# C 语言版本标准答案与评分标准" in answer_key
+    assert "| Q30 | A |" in answer_key
+    assert "T1_SC_problem_definition" in answer_key
+    assert "监督卡总分 10 分" in answer_key
 
 
 def test_frontend_shows_research_notice_after_pretest_and_tracks_time():

@@ -898,6 +898,155 @@ ZH_TASK_TEXT = {
     },
 }
 
+C_ZH_TASK_TEXT = {
+    1: {
+        "title": "C 任务 1：商品价格查找与订单总价",
+        "requirements": [
+            "double calculate_total(int ids[], int qty[], int n, int price_ids[], double prices[], int m, int vip)",
+            "对 ids 中的每个商品编号，在 price_ids 中查找匹配编号。",
+            '如果任意商品编号不存在，返回 -1 表示 "Unknown item"。',
+            "如果 vip 为真，先对小计应用 10% 折扣。",
+            "折扣后小计大于 100 则免运费，否则运费为 8。",
+            "返回最终金额。",
+        ],
+        "questions": {
+            "Q1": "这份 AI 生成的 C 语言答案是否完全满足任务要求？",
+            "Q2": "这份 AI 生成的 C 语言答案是否可以直接提交？",
+            "Q3": "AI 代码会返回什么？",
+            "Q4": "根据任务要求，正确返回值应该是什么？",
+            "Q5": "这份 AI 生成答案的主要问题是什么？",
+        },
+        "contexts": {"Q3": "给定 ids={1,9}, qty={2,1}, price_ids={1,2}, prices={10,50}, vip=0。"},
+        "supervision": {
+            "T1_SC_problem_definition": "任务是否要求商品编号未知时返回 -1？",
+            "T1_SC_code_understanding": "把 price 初始化为 0，是否会让未知商品按 0 元计入小计？",
+            "T1_SC_output_debugging": "对于 ids={1,9}，编号 9 是否会被静默按 0 元处理？",
+            "T1_SC_verification_testing": "哪个输入最能暴露未知编号问题？",
+            "T1_SC_responsibility": "如果未知编号被按 0 元收费，这段代码是否可以直接提交？",
+        },
+    },
+    2: {
+        "title": "C 任务 2：文件行计数与输出",
+        "requirements": [
+            "int count_nonempty_lines(const char *input_path, const char *output_path)",
+            "读取输入文件的所有行。",
+            "只包含换行符的空行应被跳过。",
+            "返回非空行数量。",
+            "把计数写入 output_path，并覆盖旧内容。",
+        ],
+        "questions": {
+            "Q6": "这份 AI 生成的 C 语言答案是否完全满足任务要求？",
+            "Q7": "这份 AI 生成的 C 语言答案是否可以直接提交？",
+            "Q8": "AI 代码会返回什么？",
+            "Q9": "根据任务要求，正确返回值应该是什么？",
+            "Q10": "这份答案的问题包括哪一组？",
+        },
+        "contexts": {"Q8": '输入文件内容为 "a\\n\\nb\\n"。'},
+        "supervision": {
+            "T2_SC_problem_definition": "任务是否要求跳过只包含换行符的空行？",
+            "T2_SC_code_understanding": 'strcmp(line, "") 能否跳过被读取为 "\\n" 的空行？',
+            "T2_SC_output_debugging": "这段代码是否会追加到旧输出后，而不是覆盖旧内容？",
+            "T2_SC_verification_testing": "哪个输入最能测试空行处理？",
+            "T2_SC_responsibility": "如果旧输出会保留在文件里，这段代码是否可以直接提交？",
+        },
+    },
+    3: {
+        "title": "C 任务 3：学生成绩报告",
+        "requirements": ["根据学生 id，从成绩表中填充每个学生的成绩。", "如果某个学生 id 在成绩表中缺失，成绩应为 0。", "保持原始学生顺序。"],
+        "questions": {
+            "Q11": "这份 AI 生成的 C 语言答案是否完全满足任务要求？",
+            "Q12": "这份 AI 生成的 C 语言答案是否可以直接提交？",
+            "Q13": "AI 代码会生成什么结果？",
+            "Q14": "根据任务要求，正确的成绩值应该是什么？",
+            "Q15": "这份答案的主要问题是什么？",
+        },
+        "contexts": {"Q13": "students 为 [{id:2,name:Bob},{id:1,name:Ana}]，scores={{1,90}}。"},
+    },
+    4: {
+        "title": "C 任务 4：排除哨兵值的数组平均值",
+        "requirements": ["忽略值为 -1 的元素。", "以 double 返回有效值的平均数。", "如果没有有效值，返回 0.0。"],
+        "questions": {
+            "Q16": "这份 AI 生成的 C 语言答案是否完全满足任务要求？",
+            "Q17": "这份 AI 生成的 C 语言答案是否可以直接提交？",
+            "Q18": "在普通 C 整数除法行为下，AI 代码会返回什么？",
+            "Q19": "根据任务要求，正确返回值应该是什么？",
+            "Q20": "这份答案的主要问题是什么？",
+        },
+        "contexts": {"Q18": "arr={2,4,-1}, n=3。-1 表示无效值，应被忽略。"},
+    },
+    5: {
+        "title": "C 任务 5：分类销售额汇总",
+        "requirements": ["销售额计算为 price * quantity。", "按分类下标汇总销售额。", "累计前应设置每个分类的初始总额。"],
+        "questions": {
+            "Q21": "这份 AI 生成的 C 语言答案是否完全满足任务要求？",
+            "Q22": "这份 AI 生成的 C 语言答案是否可以直接提交？",
+            "Q23": "AI 代码会生成哪些 totals？",
+            "Q24": "根据任务要求，正确的 totals 应该是什么？",
+            "Q25": "这份答案的主要问题是什么？",
+        },
+        "contexts": {"Q23": "prices={10,20,5}, qty={2,1,4}, cat={0,1,0}, cat_count=2。"},
+    },
+    6: {
+        "title": "C 任务 6：CSV 商品汇总",
+        "requirements": ["每行格式为 product_id,units,price。", "如果商品编号未知，或 units/price 为负数，返回 0。", "计算 units * price。", "按分类汇总 totals，成功时返回 1。"],
+        "questions": {
+            "Q26": "这份 AI 生成的 C 语言答案是否完全满足任务要求？",
+            "Q27": "这份 AI 生成的 C 语言答案是否可以直接提交？",
+            "Q28": "AI 代码会生成哪些 totals？",
+            "Q29": "根据任务要求，正确的 totals 应该是什么？",
+            "Q30": "这份答案的问题包括哪一组？",
+        },
+        "contexts": {"Q28": "输入行是 1,2,10 和 2,3,5。ids={1,2}, cats={0,1}。"},
+    },
+}
+
+C_OPTION_TEXT_ZH = {
+    "Yes": "是",
+    "No": "否",
+    "Not sure": "不确定",
+    "Can submit": "可以提交",
+    "Cannot submit": "不可以提交",
+    "Can": "能",
+    "Cannot": "不能",
+    "Compilation error": "编译错误",
+    "VIP discount is calculated incorrectly": "VIP 折扣计算错误",
+    "Unknown product ids are treated as price 0": "未知商品编号被按 0 元处理",
+    "The shipping threshold is missing": "缺少运费阈值",
+    "The loop never runs": "循环完全没有执行",
+    "Only missing fclose": "只是缺少 fclose",
+    "It does not skip newline-only blank lines and uses append mode": "没有跳过只含换行符的空行，且使用追加模式",
+    "It cannot read files at all": "完全无法读取文件",
+    "It has no problem": "没有问题",
+    "Bob has 0 and Ana has 90, original order unchanged": "Bob 为 0，Ana 为 90，原顺序不变",
+    "Ana is moved before Bob": "Ana 被移动到 Bob 前面",
+    "Both scores become 90": "两人的成绩都变为 90",
+    "Bob has 0 and Ana has 90": "Bob 为 0，Ana 为 90",
+    "Bob has 90 and Ana has 0": "Bob 为 90，Ana 为 0",
+    "Both scores become 0": "两人的成绩都变为 0",
+    "No scores should be assigned": "不应赋任何成绩",
+    "It does not handle missing scores": "没有处理缺失成绩",
+    "It changes names": "修改了姓名",
+    "It cannot use structs": "不能使用结构体",
+    "It uses a loop": "使用了循环",
+    "It includes sentinel -1 and performs integer division": "把哨兵值 -1 计入平均值，且执行了整数除法",
+    "It returns double": "返回 double",
+    "totals[0]=40, totals[1]=20": "totals[0]=40，totals[1]=20",
+    "totals[0]=15, totals[1]=20": "totals[0]=15，totals[1]=20",
+    "totals[0]=20, totals[1]=20": "totals[0]=20，totals[1]=20",
+    "All totals should be 0": "所有 totals 都应为 0",
+    "It does not multiply price and quantity": "没有计算 price * quantity",
+    "It does not initialize totals": "没有初始化 totals",
+    "It uses arrays": "使用了数组",
+    "totals[0]=20, totals[1]=15": "totals[0]=20，totals[1]=15",
+    "totals[0]=12, totals[1]=8": "totals[0]=12，totals[1]=8",
+    "totals[0]=10, totals[1]=5": "totals[0]=10，totals[1]=5",
+    "return 0": "返回 0",
+    "Revenue uses addition instead of multiplication and unknown/negative data does not fail": "销售额使用加法而不是乘法，且未知或负数数据不会失败",
+    "Only the loop condition is wrong": "只有循环条件错误",
+    "Only totals are not initialized": "只是 totals 没有初始化",
+    "C. Empty file": "C. 空文件",
+}
+
 COMMON_OPTION_TEXT_ZH = {
     "Yes": "是",
     "No": "否",
@@ -931,9 +1080,34 @@ COMMON_OPTION_TEXT_ZH = {
 
 
 def localized_task(task_id: int, lang: str = "en", version: str = "python") -> dict:
-    task = deepcopy(get_task(task_id, version))
-    if lang != "zh" or normalize_questionnaire_version(version) != "python":
+    normalized_version = normalize_questionnaire_version(version)
+    task = deepcopy(get_task(task_id, normalized_version))
+    if lang != "zh":
         return task
+    if normalized_version == "c":
+        zh = C_ZH_TASK_TEXT.get(task_id, {})
+        task["title"] = zh.get("title", task["title"])
+        task["requirements"] = zh.get("requirements", task["requirements"])
+        for question in task["questions"]:
+            qid = question["id"]
+            question["prompt"] = zh.get("questions", {}).get(qid, question["prompt"])
+            if qid in zh.get("contexts", {}):
+                question["context"] = zh["contexts"][qid]
+            for option in question["options"]:
+                option["text"] = C_OPTION_TEXT_ZH.get(option["text"], option["text"])
+        if task.get("supervision_card"):
+            for item in task["supervision_card"]:
+                item["prompt"] = zh.get("supervision", {}).get(item["id"], item["prompt"])
+                item["dimension"] = {
+                    "Problem Definition": "问题定义能力",
+                    "AI Code Understanding": "AI 代码理解能力",
+                    "AI Output Debugging": "AI 输出调试能力",
+                    "Verification and Testing": "验证与测试能力",
+                    "Responsibility and Supervision": "责任与监督能力",
+                }.get(item["dimension"], item["dimension"])
+                item["options"] = [C_OPTION_TEXT_ZH.get(option, option) for option in item["options"]]
+        return task
+
     zh = ZH_TASK_TEXT.get(task_id, {})
     task["title"] = zh.get("title", task["title"])
     task["requirements"] = zh.get("requirements", task["requirements"])

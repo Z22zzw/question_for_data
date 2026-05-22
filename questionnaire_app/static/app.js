@@ -282,6 +282,17 @@ const majorOptionsByVersion = {
   },
 };
 
+const familiarityLabelsByVersion = {
+  python: {
+    en: "Python Proficiency",
+    zh: "Python 掌握程度",
+  },
+  c: {
+    en: "C Language Proficiency",
+    zh: "C 语言掌握程度",
+  },
+};
+
 const state = {
   status: "loading",
   nextStage: null,
@@ -569,6 +580,13 @@ function updateMajorOptions(form) {
   major.value = config.values.includes(previous) ? previous : "";
 }
 
+function pretestFieldLabel(name, version) {
+  if (name === "python_familiarity") {
+    return familiarityLabelsByVersion[version][state.lang];
+  }
+  return i18n[state.lang].fields[name];
+}
+
 function savePending(payload) {
   localStorage.setItem("questionnaire_pending_submit", JSON.stringify(payload));
   networkStatus.textContent = navigator.onLine ? t("pending") : t("offline");
@@ -708,7 +726,7 @@ function renderPretest() {
   const selectedVersion = draftData.questionnaire_version === "c" ? "c" : "python";
   const fields = pretestFields
     .map(([name, type]) => {
-      const label = i18n[state.lang].fields[name];
+      const label = pretestFieldLabel(name, selectedVersion);
       if (type === "select") {
         const config = name === "major" ? majorOptionsByVersion[selectedVersion] : optionLabels[name];
         return `<label class="field"><span>${label}</span><select name="${name}" required><option value="">${t("select")}</option>${config.values
@@ -737,8 +755,8 @@ function renderPretest() {
   const form = document.getElementById("pretestForm");
   bindDraft(form, "pretest");
   form.elements.questionnaire_version?.addEventListener("change", () => {
-    updateMajorOptions(form);
     localStorage.setItem(draftKey("pretest"), JSON.stringify(readForm(form)));
+    renderPretest();
   });
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
