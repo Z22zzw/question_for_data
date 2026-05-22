@@ -19,11 +19,12 @@ def make_two_clients(tmp_path: Path) -> tuple[TestClient, TestClient]:
     return TestClient(app), TestClient(app)
 
 
-def pretest_payload() -> dict:
+def pretest_payload(version: str = "python") -> dict:
     return {
         "consent": "I agree",
+        "questionnaire_version": version,
         "grade_year": "Year 3",
-        "major": "计算机类",
+        "major": "计算机科学与技术" if version == "c" else "计算机类",
         "programming_experience_years": "3-4",
         "python_familiarity": "4",
         "file_io_familiarity": "3",
@@ -41,8 +42,8 @@ def start_session(client: TestClient):
     return response
 
 
-def submit_pretest(client: TestClient) -> dict:
-    pretest_response = client.post("/api/pretest", json=pretest_payload())
+def submit_pretest(client: TestClient, version: str = "python") -> dict:
+    pretest_response = client.post("/api/pretest", json=pretest_payload(version))
     assert pretest_response.status_code == 200
     assert pretest_response.json()["next_stage"] == "notice"
     response = start_session(client)
@@ -180,6 +181,56 @@ def test_pretest_assigns_hidden_balanced_groups(tmp_path: Path):
     groups = [row["group"] for row in sessions]
     assert groups.count("A") == 2
     assert groups.count("B") == 2
+
+
+def test_python_and_c_versions_use_isolated_databases(tmp_path: Path):
+    db_path = tmp_path / "test.sqlite"
+    app = create_app(db_path=db_path, admin_password="secret")
+    python_client = TestClient(app)
+    c_client = TestClient(app)
+
+    python_data = submit_pretest(python_client, "python")
+    c_data = submit_pretest(c_client, "c")
+
+    assert python_data["participant_id"] == 1
+    assert c_data["participant_id"] == 1
+
+    python_task = python_client.get("/api/task/1").json()
+    c_task = c_client.get("/api/task/1").json()
+
+    assert "Python" not in python_task["title"]
+    assert c_task["title"].startswith("C Task 1")
+    assert "double calculate_total" in c_task["code"]
+
+    python_sessions = python_client.get("/api/admin/sessions?password=secret&version=python").json()
+    c_sessions = python_client.get("/api/admin/sessions?password=secret&version=c").json()
+
+    assert len(python_sessions) == 1
+    assert len(c_sessions) == 1
+    assert python_sessions[0]["questionnaire_version"] == "python"
+    assert c_sessions[0]["questionnaire_version"] == "c"
+
+
+def test_admin_bulk_delete_applies_only_to_selected_version(tmp_path: Path):
+    db_path = tmp_path / "test.sqlite"
+    app = create_app(db_path=db_path, admin_password="secret")
+    client = TestClient(app)
+
+    submit_pretest(client, "python")
+    python_session_id = latest_session_id(client)
+    client.post("/api/session/reset")
+    submit_pretest(client, "c")
+    c_session_id = client.get("/api/admin/sessions?password=secret&include_abandoned=true&version=c").json()[0]["session_id"]
+
+    response = client.post(
+        "/api/admin/sessions/bulk-delete?password=secret&version=c",
+        json={"session_ids": [c_session_id]},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["deleted"] == 1
+    assert client.get("/api/admin/sessions?password=secret&include_abandoned=true&version=c").json()[0]["status"] == "abandoned"
+    assert client.get("/api/admin/sessions?password=secret&include_abandoned=true&version=python").json()[0]["session_id"] == python_session_id
 
 
 def test_pretest_precedes_research_notice_agreement(tmp_path: Path):

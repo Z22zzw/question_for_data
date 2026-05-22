@@ -102,6 +102,7 @@ const i18n = {
     requiredQuestionWarning: "Please answer this question before submitting.",
     resetHome: "New Session",
     fields: {
+      questionnaire_version: "Questionnaire Version",
       grade_year: "Grade Year",
       major: "Major",
       programming_experience_years: "Programming Experience",
@@ -207,6 +208,7 @@ const i18n = {
     requiredQuestionWarning: "请先回答这个问题。",
     resetHome: "回到首页",
     fields: {
+      questionnaire_version: "题目版本",
       grade_year: "年级",
       major: "专业",
       programming_experience_years: "编程经验",
@@ -220,6 +222,11 @@ const i18n = {
 };
 
 const optionLabels = {
+  questionnaire_version: {
+    en: ["Python Version", "C Version"],
+    zh: ["Python 版本", "C 语言版本"],
+    values: ["python", "c"],
+  },
   grade_year: {
     en: ["Year 1", "Year 2", "Year 3", "Year 4", "Master", "PhD", "Other"],
     zh: ["大一", "大二", "大三", "大四", "硕士", "博士", "其他"],
@@ -259,6 +266,19 @@ const optionLabels = {
     en: ["Never", "Rarely", "Sometimes", "Often", "Very often"],
     zh: ["从不", "很少", "有时", "经常", "非常频繁"],
     values: ["Never", "Rarely", "Sometimes", "Often", "Very often"],
+  },
+};
+
+const majorOptionsByVersion = {
+  python: {
+    en: ["计算机类", "电子信息类", "自动化类", "电气类", "机械类"],
+    zh: ["计算机类", "电子信息类", "自动化类", "电气类", "机械类"],
+    values: ["计算机类", "电子信息类", "自动化类", "电气类", "机械类"],
+  },
+  c: {
+    en: ["计算机科学与技术", "网络空间安全", "数字媒体技术", "物联网工程", "智能科技与技术", "软件工程"],
+    zh: ["计算机科学与技术", "网络空间安全", "数字媒体技术", "物联网工程", "智能科技与技术", "软件工程"],
+    values: ["计算机科学与技术", "网络空间安全", "数字媒体技术", "物联网工程", "智能科技与技术", "软件工程"],
   },
 };
 
@@ -349,6 +369,7 @@ function renderIntroModal() {
 }
 
 const pretestFields = [
+  ["questionnaire_version", "select"],
   ["grade_year", "select"],
   ["major", "select"],
   ["programming_experience_years", "select"],
@@ -528,6 +549,26 @@ function bindDraft(form, key) {
   });
 }
 
+function readDraftData(key) {
+  try {
+    return JSON.parse(localStorage.getItem(draftKey(key)) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function updateMajorOptions(form) {
+  const version = form.elements.questionnaire_version?.value === "c" ? "c" : "python";
+  const major = form.elements.major;
+  if (!major) return;
+  const previous = major.value;
+  const config = majorOptionsByVersion[version];
+  major.innerHTML = `<option value="">${t("select")}</option>${config.values
+    .map((value, index) => `<option value="${escapeHtml(value)}">${escapeHtml(config[state.lang][index])}</option>`)
+    .join("")}`;
+  major.value = config.values.includes(previous) ? previous : "";
+}
+
 function savePending(payload) {
   localStorage.setItem("questionnaire_pending_submit", JSON.stringify(payload));
   networkStatus.textContent = navigator.onLine ? t("pending") : t("offline");
@@ -663,11 +704,13 @@ function renderPretest() {
   progressLabel.textContent = t("pretest");
   timerLabel.textContent = formatClock(state.timeLimitSeconds);
   timerLabel.classList.remove("warning");
+  const draftData = readDraftData("pretest");
+  const selectedVersion = draftData.questionnaire_version === "c" ? "c" : "python";
   const fields = pretestFields
     .map(([name, type]) => {
       const label = i18n[state.lang].fields[name];
       if (type === "select") {
-        const config = optionLabels[name];
+        const config = name === "major" ? majorOptionsByVersion[selectedVersion] : optionLabels[name];
         return `<label class="field"><span>${label}</span><select name="${name}" required><option value="">${t("select")}</option>${config.values
           .map((value, index) => `<option value="${escapeHtml(value)}">${escapeHtml(config[state.lang][index])}</option>`)
           .join("")}</select></label>`;
@@ -693,6 +736,10 @@ function renderPretest() {
 
   const form = document.getElementById("pretestForm");
   bindDraft(form, "pretest");
+  form.elements.questionnaire_version?.addEventListener("change", () => {
+    updateMajorOptions(form);
+    localStorage.setItem(draftKey("pretest"), JSON.stringify(readForm(form)));
+  });
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const payload = readForm(form);

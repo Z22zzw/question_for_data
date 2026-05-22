@@ -82,6 +82,15 @@
     <button class="btn btn-primary" id="refreshBtn">刷新</button>
     <button class="btn btn-secondary" id="exportBtn">导出正常完成 Excel</button>
     <label class="filter-field">
+      题目版本
+      <select id="versionFilter">
+        <option value="python">Python 版本</option>
+        <option value="c">C 语言版本</option>
+      </select>
+    </label>
+    <button class="btn btn-danger" id="bulkDeleteSelectedBtn">删除选中</button>
+    <button class="btn btn-danger" id="bulkDeleteFilteredBtn">删除当前筛选结果</button>
+    <label class="filter-field">
       完成状态
       <select id="completionFilter">
         <option value="all">全部</option>
@@ -108,7 +117,7 @@
   <table id="sessionTable">
     <thead>
       <tr>
-        <th>ID</th><th>分组</th><th>状态</th><th>总分</th><th>质量</th><th>总耗时</th><th>创建时间</th><th>完成时间</th><th>操作</th>
+        <th><input type="checkbox" id="selectAllVisible" /></th><th>ID</th><th>分组</th><th>状态</th><th>总分</th><th>质量</th><th>总耗时</th><th>创建时间</th><th>完成时间</th><th>操作</th>
       </tr>
     </thead>
     <tbody id="sessionBody"></tbody>
@@ -127,6 +136,7 @@
 <script>
 let pw = '';
 let sessions = [];
+let selectedSessionIds = new Set();
 
 const ANSWER_KEY = {
   Q1:'B',Q2:'B',Q3:'B',Q4:'A',Q5:'B',Q6:'B',Q7:'B',Q8:'D',Q9:'A',Q10:'B',
@@ -136,7 +146,8 @@ const ANSWER_KEY = {
 
 async function api(path, opts = {}) {
   const sep = path.includes('?') ? '&' : '?';
-  const res = await fetch(path + sep + 'password=' + encodeURIComponent(pw), opts);
+  const version = document.getElementById('versionFilter')?.value || 'python';
+  const res = await fetch(path + sep + 'password=' + encodeURIComponent(pw) + '&version=' + encodeURIComponent(version), opts);
   const data = res.headers.get('content-type')?.includes('json') ? await res.json() : null;
   if (!res.ok) throw new Error(data?.detail || res.statusText);
   return data;
@@ -158,6 +169,7 @@ document.getElementById('pwInput').addEventListener('keydown', e => { if (e.key 
 
 async function loadSessions() {
   updateIncompleteReasonState();
+  selectedSessionIds = new Set();
   const incl = shouldIncludeAbandoned();
   sessions = await api('/api/admin/sessions?include_abandoned=' + incl);
   renderTable();
@@ -195,7 +207,7 @@ function renderTable() {
   const total = visibleSessions.length;
   const normal = visibleSessions.filter(s => s.completion_bucket === 'normal_completed').length;
   const incomplete = visibleSessions.filter(s => s.completion_bucket === 'incomplete').length;
-  document.getElementById('statsLabel').textContent = `显示 ${total} 条 · 正常完成 ${normal} · 未完成/异常 ${incomplete}`;
+  document.getElementById('statsLabel').textContent = `显示 ${total} 条 · 正常完成 ${normal} · 未完成/异常 ${incomplete} · 已选 ${selectedSessionIds.size}`;
   for (const s of visibleSessions) {
     const tr = document.createElement('tr');
     const statusBadge = {complete:'badge-complete',in_progress:'badge-progress',abandoned:'badge-abandoned',timeout:'badge-timeout'}[s.status] || '';
@@ -204,6 +216,7 @@ function renderTable() {
     const reasonLabels = {in_progress:'进行中',pending_posttest:'未提交后测',abandoned:'已删除',quality_failed:'质量异常',timeout:'超时'};
     const completionLabel = s.completion_bucket === 'normal_completed' ? '正常完成' : (reasonLabels[s.incomplete_reason] || '未完成');
     tr.innerHTML = `
+      <td><input type="checkbox" class="row-select" data-session-id="${s.session_id}" ${selectedSessionIds.has(s.session_id) ? 'checked' : ''} /></td>
       <td><strong>#${s.participant_id}</strong><br><span style="font-size:11px;color:#999">${s.session_id.slice(0,8)}…</span></td>
       <td><span class="badge ${groupBadge}">${s.group}</span></td>
       <td><span class="badge ${statusBadge}">${completionLabel}</span></td>
@@ -220,6 +233,29 @@ function renderTable() {
       </td>`;
     tbody.appendChild(tr);
   }
+  tbody.querySelectorAll('.row-select').forEach(input => {
+    input.onchange = () => {
+      if (input.checked) selectedSessionIds.add(input.dataset.sessionId);
+      else selectedSessionIds.delete(input.dataset.sessionId);
+      updateSelectionState();
+    };
+  });
+  updateSelectionState();
+}
+
+function visibleSessionIds() {
+  return filteredSessions().map(s => s.session_id);
+}
+
+function updateSelectionState() {
+  const visibleIds = visibleSessionIds();
+  const selectedVisible = visibleIds.filter(id => selectedSessionIds.has(id));
+  const selectAll = document.getElementById('selectAllVisible');
+  if (selectAll) {
+    selectAll.checked = visibleIds.length > 0 && selectedVisible.length === visibleIds.length;
+    selectAll.indeterminate = selectedVisible.length > 0 && selectedVisible.length < visibleIds.length;
+  }
+  document.getElementById('statsLabel').textContent = document.getElementById('statsLabel').textContent.replace(/已选 \d+$/, `已选 ${selectedSessionIds.size}`);
 }
 
 async function deleteSession(id) {
@@ -230,6 +266,19 @@ async function deleteSession(id) {
 
 async function restoreSession(id) {
   await api('/api/admin/sessions/' + id + '/restore', { method: 'POST' });
+  loadSessions();
+}
+
+async function bulkDelete(sessionIds, label) {
+  const ids = [...new Set(sessionIds)].filter(Boolean);
+  if (!ids.length) { alert('没有可删除的数据'); return; }
+  if (!confirm(`确认删除${label}的 ${ids.length} 条数据？`)) return;
+  const result = await api('/api/admin/sessions/bulk-delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_ids: ids }),
+  });
+  alert(`已删除 ${result.deleted} 条数据`);
   loadSessions();
 }
 
@@ -322,17 +371,28 @@ document.getElementById('modalClose').onclick = closeModal;
 document.getElementById('detailModal').onclick = e => { if (e.target === e.currentTarget) closeModal(); };
 
 document.getElementById('refreshBtn').onclick = loadSessions;
+document.getElementById('versionFilter').onchange = loadSessions;
 document.getElementById('showAbandoned').onchange = loadSessions;
 document.getElementById('completionFilter').onchange = loadSessions;
 document.getElementById('incompleteReasonFilter').onchange = loadSessions;
+document.getElementById('selectAllVisible').onchange = e => {
+  for (const id of visibleSessionIds()) {
+    if (e.target.checked) selectedSessionIds.add(id);
+    else selectedSessionIds.delete(id);
+  }
+  renderTable();
+};
+document.getElementById('bulkDeleteSelectedBtn').onclick = () => bulkDelete([...selectedSessionIds], '选中');
+document.getElementById('bulkDeleteFilteredBtn').onclick = () => bulkDelete(visibleSessionIds(), '当前筛选结果');
 
 document.getElementById('exportBtn').onclick = async () => {
-  const res = await fetch('/api/admin/export?password=' + encodeURIComponent(pw));
+  const version = document.getElementById('versionFilter').value;
+  const res = await fetch('/api/admin/export?password=' + encodeURIComponent(pw) + '&version=' + encodeURIComponent(version));
   if (!res.ok) { alert('导出失败'); return; }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = 'questionnaire_normal_completed_export.xlsx'; a.click();
+  a.href = url; a.download = `questionnaire_${version}_normal_completed_export.xlsx`; a.click();
   URL.revokeObjectURL(url);
 };
 </script>

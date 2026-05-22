@@ -12,16 +12,25 @@ from pydantic import BaseModel
 
 from .database import Database, decode_json, seconds_between, seconds_to_hms
 from .export import build_export_workbook
-from .questionnaire import POSTTEST_FIELDS, PRETEST_FIELDS, localized_task, posttest_schema, task_question_ids
+from .questionnaire import (
+    POSTTEST_FIELDS,
+    PRETEST_FIELDS,
+    localized_task,
+    normalize_questionnaire_version,
+    posttest_schema,
+    task_question_ids,
+)
 from .scoring import check_response_pattern, check_timing, score_answers, score_supervision
 
 SESSION_COOKIE_NAME = "questionnaire_session"
+VERSION_COOKIE_NAME = "questionnaire_version"
 SESSION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 7
 QUESTIONNAIRE_TIME_LIMIT_SECONDS = 40 * 60
 
 
 class PretestPayload(BaseModel):
     consent: str
+    questionnaire_version: str = "python"
     grade_year: str
     major: str
     programming_experience_years: str
@@ -61,11 +70,35 @@ class PosttestPayload(BaseModel):
 
 def create_app(db_path: Path | None = None, admin_password: str | None = None) -> FastAPI:
     base_dir = Path(__file__).resolve().parents[1]
-    db = Database(db_path or base_dir / "data" / "questionnaire.sqlite")
+    python_db_path = db_path or base_dir / "data" / "questionnaire.sqlite"
+    c_db_path = (
+        db_path.with_name(f"{db_path.stem}_c{db_path.suffix}")
+        if db_path
+        else base_dir / "data" / "questionnaire_c.sqlite"
+    )
+    dbs = {
+        "python": Database(python_db_path),
+        "c": Database(c_db_path),
+    }
     password = admin_password or os.getenv("ADMIN_PASSWORD", "admin123")
     app = FastAPI(title="AI Supervision A/B Questionnaire")
 
-    def set_session_cookie(response: Response, session_id: str) -> None:
+    def normalize_version_or_400(version: str | None) -> str:
+        normalized = normalize_questionnaire_version(version)
+        if version not in (None, "", normalized):
+            raise HTTPException(status_code=400, detail="Unsupported questionnaire version")
+        return normalized
+
+    def db_for_version(version: str | None) -> Database:
+        return dbs[normalize_version_or_400(version)]
+
+    def request_version(request: Request) -> str:
+        return normalize_questionnaire_version(request.cookies.get(VERSION_COOKIE_NAME))
+
+    def request_db(request: Request) -> Database:
+        return dbs[request_version(request)]
+
+    def set_session_cookie(response: Response, session_id: str, version: str) -> None:
         response.set_cookie(
             SESSION_COOKIE_NAME,
             session_id,
@@ -73,23 +106,33 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
             httponly=True,
             samesite="lax",
         )
+        response.set_cookie(
+            VERSION_COOKIE_NAME,
+            version,
+            max_age=SESSION_COOKIE_MAX_AGE_SECONDS,
+            httponly=True,
+            samesite="lax",
+        )
 
     def clear_session_cookie(response: Response) -> None:
         response.delete_cookie(SESSION_COOKIE_NAME, samesite="lax")
+        response.delete_cookie(VERSION_COOKIE_NAME, samesite="lax")
 
     def cookie_session_id(request: Request) -> str | None:
         return request.cookies.get(SESSION_COOKIE_NAME)
 
-    def require_cookie_session(request: Request) -> str:
+    def require_cookie_session(request: Request) -> tuple[str, Database, str]:
         session_id = cookie_session_id(request)
         if not session_id:
             raise HTTPException(status_code=401, detail="No active session")
+        version = request_version(request)
+        db = dbs[version]
         session = db.get_session(session_id)
         if not session or session["abandoned_at"]:
             raise HTTPException(status_code=401, detail="No active session")
-        if ensure_not_timed_out(session):
+        if ensure_not_timed_out(session, db):
             raise HTTPException(status_code=410, detail="Session timed out. Please restart the questionnaire.")
-        return session_id
+        return session_id, db, version
 
     def timeout_at_for_session(session: dict[str, Any]) -> str:
         from datetime import datetime
@@ -99,7 +142,10 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
 
     def has_submitted_pretest(session: dict[str, Any]) -> bool:
         pretest = decode_json(session["pretest_json"])
-        return all(pretest.get(field) not in ("", None) for field in PRETEST_FIELDS)
+        return all(
+            field == "questionnaire_version" or pretest.get(field) not in ("", None)
+            for field in PRETEST_FIELDS
+        )
 
     def elapsed_seconds_for_session(session: dict[str, Any]) -> int:
         from datetime import datetime, timezone
@@ -120,7 +166,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
             "remaining_seconds": max(0, QUESTIONNAIRE_TIME_LIMIT_SECONDS - elapsed),
         }
 
-    def ensure_not_timed_out(session: Any) -> bool:
+    def ensure_not_timed_out(session: Any, db: Database) -> bool:
         session_dict = dict(session)
         if session_dict["current_task"] == 0:
             return False
@@ -132,13 +178,13 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         db.mark_timeout(session_dict["id"], timeout_at_for_session(session_dict))
         return True
 
-    def summarize_session(session_id: str) -> dict[str, Any]:
+    def summarize_session(session_id: str, db: Database) -> dict[str, Any]:
         rows = [row for row in db.all_rows() if row["session"]["id"] == session_id]
         if not rows:
             return {"status": "none"}
         row = rows[0]
         session_dict = dict(row["session"])
-        if ensure_not_timed_out(session_dict):
+        if ensure_not_timed_out(session_dict, db):
             refreshed = db.admin_get_session(session_id)
             session_dict = dict(refreshed["session"])
             return {
@@ -238,29 +284,29 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
             return {"completion_bucket": "incomplete", "incomplete_reason": "pending_posttest"}
         return {"completion_bucket": "incomplete", "incomplete_reason": "in_progress"}
 
-    def read_task_for_session(session_id: str, task_id: int, lang: str) -> dict[str, Any]:
+    def read_task_for_session(session_id: str, task_id: int, lang: str, db: Database, version: str) -> dict[str, Any]:
         session = db.get_session(session_id)
         if not session or session["abandoned_at"]:
             raise HTTPException(status_code=404, detail="Session not found")
-        if ensure_not_timed_out(session):
+        if ensure_not_timed_out(session, db):
             raise HTTPException(status_code=410, detail="Session timed out. Please restart the questionnaire.")
         if task_id != session["current_task"] or task_id < 1 or task_id > 6:
             raise HTTPException(status_code=409, detail="This task is not available")
         db.mark_task_started(session_id, task_id)
-        task = localized_task(task_id, lang)
+        task = localized_task(task_id, lang, version)
         if session["group_name"] != "B" or task_id not in (1, 2):
             task["supervision_card"] = None
         return task
 
-    def submit_task_for_session(session_id: str, task_id: int, payload: TaskPayload) -> dict[str, Any]:
+    def submit_task_for_session(session_id: str, task_id: int, payload: TaskPayload, db: Database, version: str) -> dict[str, Any]:
         session = db.get_session(session_id)
         if not session or session["abandoned_at"]:
             raise HTTPException(status_code=404, detail="Session not found")
-        if ensure_not_timed_out(session):
+        if ensure_not_timed_out(session, db):
             raise HTTPException(status_code=410, detail="Session timed out. Please restart the questionnaire.")
         if task_id != session["current_task"] or task_id < 1 or task_id > 6:
             raise HTTPException(status_code=409, detail="This task is not available")
-        required = set(task_question_ids(task_id))
+        required = set(task_question_ids(task_id, version))
         if set(payload.answers) != required:
             raise HTTPException(status_code=400, detail="All task questions must be answered")
         try:
@@ -268,11 +314,11 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 
-    def read_posttest_for_session(session_id: str, lang: str) -> dict[str, Any]:
+    def read_posttest_for_session(session_id: str, lang: str, db: Database) -> dict[str, Any]:
         session = db.get_session(session_id)
         if not session or session["abandoned_at"]:
             raise HTTPException(status_code=404, detail="Session not found")
-        if ensure_not_timed_out(session):
+        if ensure_not_timed_out(session, db):
             raise HTTPException(status_code=410, detail="Session timed out. Please restart the questionnaire.")
         if session["current_task"] <= 6:
             raise HTTPException(status_code=409, detail="Posttest is not available")
@@ -280,11 +326,11 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
             raise HTTPException(status_code=409, detail="Posttest already submitted")
         return posttest_schema(lang)
 
-    def submit_posttest_for_session(session_id: str, payload: PosttestPayload) -> dict[str, Any]:
+    def submit_posttest_for_session(session_id: str, payload: PosttestPayload, db: Database) -> dict[str, Any]:
         session = db.get_session(session_id)
         if not session or session["abandoned_at"]:
             raise HTTPException(status_code=404, detail="Session not found")
-        if ensure_not_timed_out(session):
+        if ensure_not_timed_out(session, db):
             raise HTTPException(status_code=410, detail="Session timed out. Please restart the questionnaire.")
         data = payload.model_dump()
         missing = [field for field in POSTTEST_FIELDS if data.get(field) in ("", None)]
@@ -304,6 +350,8 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         session_id = cookie_session_id(request)
         if not session_id:
             raise HTTPException(status_code=401, detail="Pretest is required before research notice agreement")
+        version = request_version(request)
+        db = dbs[version]
         session = db.get_session(session_id)
         if not session or session["abandoned_at"]:
             raise HTTPException(status_code=401, detail="No active session")
@@ -316,7 +364,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         refreshed = dict(db.get_session(session_id))
-        set_session_cookie(response, created["session_id"])
+        set_session_cookie(response, created["session_id"], version)
         return {
             "participant_id": created["participant_id"],
             "next_task": created["next_task"],
@@ -329,6 +377,9 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
     def submit_pretest(request: Request, payload: PretestPayload, response: Response) -> dict[str, Any]:
         session_id = cookie_session_id(request)
         pretest = payload.model_dump()
+        version = normalize_version_or_400(pretest.get("questionnaire_version"))
+        pretest["questionnaire_version"] = version
+        db = dbs[version]
         missing = [field for field in PRETEST_FIELDS if pretest.get(field) in ("", None)]
         if missing:
             raise HTTPException(status_code=400, detail=f"Missing required fields: {', '.join(missing)}")
@@ -336,7 +387,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
             raise HTTPException(status_code=400, detail="Consent is required")
         if not session_id:
             saved = db.create_session(pretest)
-            set_session_cookie(response, saved["session_id"])
+            set_session_cookie(response, saved["session_id"], version)
             return {
                 "participant_id": saved["participant_id"],
                 "next_task": saved["next_task"],
@@ -345,17 +396,17 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         session = db.get_session(session_id)
         if not session or session["abandoned_at"]:
             saved = db.create_session(pretest)
-            set_session_cookie(response, saved["session_id"])
+            set_session_cookie(response, saved["session_id"], version)
             return {
                 "participant_id": saved["participant_id"],
                 "next_task": saved["next_task"],
                 "next_stage": saved["next_stage"],
             }
-        if ensure_not_timed_out(session):
+        if ensure_not_timed_out(session, db):
             raise HTTPException(status_code=410, detail="Session timed out. Please restart the questionnaire.")
         if session["current_task"] != 0:
             saved = db.create_session(pretest)
-            set_session_cookie(response, saved["session_id"])
+            set_session_cookie(response, saved["session_id"], version)
             return {
                 "participant_id": saved["participant_id"],
                 "next_task": saved["next_task"],
@@ -376,54 +427,62 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         session_id = cookie_session_id(request)
         if not session_id:
             return {"status": "none"}
+        db = request_db(request)
         session = db.get_session(session_id)
         if not session or session["abandoned_at"]:
             return {"status": "none"}
-        return summarize_session(session_id)
+        return summarize_session(session_id, db)
 
     @app.post("/api/session/reset")
     def reset_session(request: Request, response: Response) -> dict[str, Any]:
         session_id = cookie_session_id(request)
         if session_id:
+            db = request_db(request)
             db.abandon_incomplete_session(session_id)
         clear_session_cookie(response)
         return {"status": "none"}
 
     @app.get("/api/task/{task_id}")
     def read_current_task(request: Request, task_id: int, lang: str = "en") -> dict[str, Any]:
-        return read_task_for_session(require_cookie_session(request), task_id, lang)
+        session_id, db, version = require_cookie_session(request)
+        return read_task_for_session(session_id, task_id, lang, db, version)
 
     @app.post("/api/task/{task_id}")
     def submit_current_task(request: Request, task_id: int, payload: TaskPayload) -> dict[str, Any]:
-        return submit_task_for_session(require_cookie_session(request), task_id, payload)
+        session_id, db, version = require_cookie_session(request)
+        return submit_task_for_session(session_id, task_id, payload, db, version)
 
     @app.get("/api/task/{session_id}/{task_id}")
-    def read_task(session_id: str, task_id: int, lang: str = "en") -> dict[str, Any]:
-        return read_task_for_session(session_id, task_id, lang)
+    def read_task(session_id: str, task_id: int, lang: str = "en", version: str = "python") -> dict[str, Any]:
+        normalized = normalize_version_or_400(version)
+        return read_task_for_session(session_id, task_id, lang, dbs[normalized], normalized)
 
     @app.post("/api/task/{session_id}/{task_id}")
-    def submit_task(session_id: str, task_id: int, payload: TaskPayload) -> dict[str, Any]:
-        return submit_task_for_session(session_id, task_id, payload)
+    def submit_task(session_id: str, task_id: int, payload: TaskPayload, version: str = "python") -> dict[str, Any]:
+        normalized = normalize_version_or_400(version)
+        return submit_task_for_session(session_id, task_id, payload, dbs[normalized], normalized)
 
     @app.get("/api/posttest")
     def read_current_posttest(request: Request, lang: str = "en") -> dict[str, Any]:
-        return read_posttest_for_session(require_cookie_session(request), lang)
+        session_id, db, _version = require_cookie_session(request)
+        return read_posttest_for_session(session_id, lang, db)
 
     @app.post("/api/posttest")
     def submit_current_posttest(request: Request, payload: PosttestPayload) -> dict[str, Any]:
-        return submit_posttest_for_session(require_cookie_session(request), payload)
+        session_id, db, _version = require_cookie_session(request)
+        return submit_posttest_for_session(session_id, payload, db)
 
     @app.get("/api/posttest/{session_id}")
-    def read_posttest(session_id: str, lang: str = "en") -> dict[str, Any]:
-        return read_posttest_for_session(session_id, lang)
+    def read_posttest(session_id: str, lang: str = "en", version: str = "python") -> dict[str, Any]:
+        return read_posttest_for_session(session_id, lang, db_for_version(version))
 
     @app.post("/api/posttest/{session_id}")
-    def submit_posttest(session_id: str, payload: PosttestPayload) -> dict[str, Any]:
-        return submit_posttest_for_session(session_id, payload)
+    def submit_posttest(session_id: str, payload: PosttestPayload, version: str = "python") -> dict[str, Any]:
+        return submit_posttest_for_session(session_id, payload, db_for_version(version))
 
     @app.get("/api/session/{session_id}/summary")
-    def session_summary(session_id: str) -> dict[str, Any]:
-        result = summarize_session(session_id)
+    def session_summary(session_id: str, version: str = "python") -> dict[str, Any]:
+        result = summarize_session(session_id, db_for_version(version))
         if result["status"] == "none":
             raise HTTPException(status_code=404, detail="Session not found")
         return result
@@ -433,8 +492,10 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
             raise HTTPException(status_code=401, detail="Invalid password")
 
     @app.get("/api/admin/export")
-    def export(password: str) -> Response:
+    def export(password: str, version: str = "python") -> Response:
         require_admin(password)
+        db = db_for_version(version)
+        normalized = normalize_questionnaire_version(version)
         normal_completed_rows = [
             row
             for row in db.all_rows()
@@ -445,18 +506,20 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         return Response(
             content,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": 'attachment; filename="questionnaire_normal_completed_export.xlsx"'},
+            headers={"Content-Disposition": f'attachment; filename="questionnaire_{normalized}_normal_completed_export.xlsx"'},
         )
 
     @app.get("/api/admin/sessions")
-    def admin_list(password: str, include_abandoned: bool = False) -> list[dict[str, Any]]:
+    def admin_list(password: str, include_abandoned: bool = False, version: str = "python") -> list[dict[str, Any]]:
         require_admin(password)
+        normalized = normalize_version_or_400(version)
+        db = dbs[normalized]
         sessions = db.admin_list_sessions(include_abandoned)
         result = []
         for s in sessions:
             row = db.admin_get_session(s["id"])
             if row and not s["completed_at"] and not s["abandoned_at"] and not s["timeout_at"]:
-                ensure_not_timed_out(s)
+                ensure_not_timed_out(s, db)
                 row = db.admin_get_session(s["id"])
                 s = row["session"]
             answers: dict[str, str] = {}
@@ -468,6 +531,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
             result.append({
                 "session_id": s["id"],
                 "participant_id": s["participant_id"],
+                "questionnaire_version": normalized,
                 "group": s["group_name"],
                 "status": "abandoned" if s["abandoned_at"] else "timeout" if s["timeout_at"] else "complete" if s["completed_at"] else "in_progress",
                 "current_task": s["current_task"],
@@ -483,9 +547,11 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         return result
 
     @app.get("/api/admin/sessions/{session_id}")
-    def admin_get(session_id: str, password: str) -> dict[str, Any]:
+    def admin_get(session_id: str, password: str, version: str = "python") -> dict[str, Any]:
         require_admin(password)
         from .database import decode_json
+        normalized = normalize_version_or_400(version)
+        db = dbs[normalized]
         row = db.admin_get_session(session_id)
         if not row:
             raise HTTPException(status_code=404, detail="Session not found")
@@ -503,6 +569,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         session["total_duration_hms"] = seconds_to_hms(elapsed_seconds_for_session(session))
         return {
             "session": session,
+            "questionnaire_version": normalized,
             "pretest": pretest,
             "posttest": posttest,
             "answers": answers,
@@ -513,23 +580,36 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         }
 
     @app.delete("/api/admin/sessions/{session_id}")
-    def admin_delete(session_id: str, password: str) -> dict[str, Any]:
+    def admin_delete(session_id: str, password: str, version: str = "python") -> dict[str, Any]:
         require_admin(password)
-        if not db.admin_delete_session(session_id):
+        if not db_for_version(version).admin_delete_session(session_id):
             raise HTTPException(status_code=404, detail="Session not found or already abandoned")
         return {"ok": True}
 
-    @app.patch("/api/admin/sessions/{session_id}")
-    def admin_update(session_id: str, password: str, body: dict[str, Any]) -> dict[str, Any]:
+    @app.post("/api/admin/sessions/bulk-delete")
+    def admin_bulk_delete(password: str, body: dict[str, Any], version: str = "python") -> dict[str, Any]:
         require_admin(password)
-        if not db.admin_update_session(session_id, body):
+        db = db_for_version(version)
+        session_ids = body.get("session_ids")
+        if not isinstance(session_ids, list) or not all(isinstance(item, str) for item in session_ids):
+            raise HTTPException(status_code=400, detail="session_ids must be a list of session ids")
+        deleted = 0
+        for session_id in session_ids:
+            if db.admin_delete_session(session_id):
+                deleted += 1
+        return {"ok": True, "deleted": deleted}
+
+    @app.patch("/api/admin/sessions/{session_id}")
+    def admin_update(session_id: str, password: str, body: dict[str, Any], version: str = "python") -> dict[str, Any]:
+        require_admin(password)
+        if not db_for_version(version).admin_update_session(session_id, body):
             raise HTTPException(status_code=400, detail="No valid fields to update")
         return {"ok": True}
 
     @app.post("/api/admin/sessions/{session_id}/restore")
-    def admin_restore(session_id: str, password: str) -> dict[str, Any]:
+    def admin_restore(session_id: str, password: str, version: str = "python") -> dict[str, Any]:
         require_admin(password)
-        if not db.admin_restore_session(session_id):
+        if not db_for_version(version).admin_restore_session(session_id):
             raise HTTPException(status_code=404, detail="Session not found")
         return {"ok": True}
 

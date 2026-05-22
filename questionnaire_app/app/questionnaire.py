@@ -244,6 +244,7 @@ POSTTEST_FIELDS = [question["id"] for question in POSTTEST_QUESTIONS]
 
 PRETEST_FIELDS = [
     "consent",
+    "questionnaire_version",
     "grade_year",
     "major",
     "programming_experience_years",
@@ -547,12 +548,230 @@ def monthly_product_summary(csv_path, category_map):
 )
 
 
-def get_task(task_id: int) -> dict:
-    return TASKS[task_id - 1]
+C_TASKS = [
+    {
+        "id": 1,
+        "title": "C Task 1: Product Price Lookup and Order Total",
+        "requirements": [
+            "double calculate_total(int ids[], int qty[], int n, int price_ids[], double prices[], int m, int vip)",
+            "For each product id in ids, find the matching id in price_ids.",
+            'If any product id is not found, return -1 to mean "Unknown item".',
+            "Apply a 10% VIP discount before shipping.",
+            "If the discounted subtotal is greater than 100, shipping is free; otherwise shipping is 8.",
+            "Return the final amount.",
+        ],
+        "code": """double calculate_total(int ids[], int qty[], int n, int price_ids[], double prices[], int m, int vip) {
+    double subtotal = 0;
+    for (int i = 0; i < n; i++) {
+        double price = 0;
+        for (int j = 0; j < m; j++) {
+            if (price_ids[j] == ids[i]) {
+                price = prices[j];
+            }
+        }
+        subtotal += price * qty[i];
+    }
+    if (vip) subtotal *= 0.9;
+    if (subtotal > 100) return subtotal;
+    return subtotal + 8;
+}""",
+        "supervision_card": [
+            {
+                "id": "T1_SC_problem_definition",
+                "dimension": "Problem Definition",
+                "prompt": 'Does the task require returning -1 when a product id is unknown?',
+                "options": ["Yes", "No", "Not sure"],
+            },
+            {
+                "id": "T1_SC_code_understanding",
+                "dimension": "AI Code Understanding",
+                "prompt": "Does initializing price to 0 make an unknown product contribute 0 to subtotal?",
+                "options": ["Yes", "No", "Not sure"],
+            },
+            {
+                "id": "T1_SC_output_debugging",
+                "dimension": "AI Output Debugging",
+                "prompt": "For ids={1,9}, will id 9 be silently priced as 0?",
+                "options": ["Yes", "No", "Not sure"],
+            },
+            {
+                "id": "T1_SC_verification_testing",
+                "dimension": "Verification and Testing",
+                "prompt": "Which input best reveals the unknown-id problem?",
+                "options": ["A. ids={1}", "B. ids={9}", "C. ids={1,1}"],
+                "values": ["A", "B", "C"],
+            },
+            {
+                "id": "T1_SC_responsibility",
+                "dimension": "Responsibility and Supervision",
+                "prompt": "If unknown ids are charged as 0, can this code be submitted directly?",
+                "options": ["Can submit", "Cannot submit", "Not sure"],
+            },
+        ],
+        "questions": [
+            {"id": "Q1", "prompt": "Does this AI-generated C answer fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
+            {"id": "Q2", "prompt": "Can this AI-generated C answer be submitted directly?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
+            {
+                "id": "Q3",
+                "context": "Given ids={1,9}, qty={2,1}, price_ids={1,2}, prices={10,50}, vip=0.",
+                "prompt": "What will the AI code return?",
+                "options": [choice("A", "-1"), choice("B", "28"), choice("C", "20"), choice("D", "Compilation error")],
+            },
+            {"id": "Q4", "prompt": "According to the requirements, what should the correct return value be?", "options": [choice("A", "-1"), choice("B", "28"), choice("C", "20"), choice("D", "8")]},
+            {"id": "Q5", "prompt": "What is the main problem with this AI-generated answer?", "options": [choice("A", "VIP discount is calculated incorrectly"), choice("B", "Unknown product ids are treated as price 0"), choice("C", "The shipping threshold is missing"), choice("D", "The loop never runs")]},
+        ],
+    },
+    {
+        "id": 2,
+        "title": "C Task 2: File Line Counting and Output",
+        "requirements": [
+            "int count_nonempty_lines(const char *input_path, const char *output_path)",
+            "Read all lines from the input file.",
+            "Blank lines containing only a newline should be skipped.",
+            "Return the number of non-empty lines.",
+            "Write the count to output_path and overwrite any old content.",
+        ],
+        "code": """int count_nonempty_lines(const char *input_path, const char *output_path) {
+    FILE *in = fopen(input_path, "r");
+    char line[256];
+    int count = 0;
+    while (fgets(line, sizeof(line), in) != NULL) {
+        if (strcmp(line, "") == 0) {
+            continue;
+        }
+        count++;
+    }
+    FILE *out = fopen(output_path, "a");
+    fprintf(out, "%d\\n", count);
+    fclose(in);
+    fclose(out);
+    return count;
+}""",
+        "supervision_card": [
+            {"id": "T2_SC_problem_definition", "dimension": "Problem Definition", "prompt": "Does the task require blank newline-only lines to be skipped?", "options": ["Yes", "No", "Not sure"]},
+            {"id": "T2_SC_code_understanding", "dimension": "AI Code Understanding", "prompt": 'Can strcmp(line, "") skip a blank line read as "\\n"?', "options": ["Can", "Cannot", "Not sure"]},
+            {"id": "T2_SC_output_debugging", "dimension": "AI Output Debugging", "prompt": "Will the code append to old output instead of overwriting it?", "options": ["Yes", "No", "Not sure"]},
+            {"id": "T2_SC_verification_testing", "dimension": "Verification and Testing", "prompt": "Which input best tests blank-line handling?", "options": ['A. "a\\n"', 'B. "a\\n\\nb\\n"', "C. Empty file"], "values": ["A", "B", "C"]},
+            {"id": "T2_SC_responsibility", "dimension": "Responsibility and Supervision", "prompt": "If old output is kept in the file, can this code be submitted directly?", "options": ["Can submit", "Cannot submit", "Not sure"]},
+        ],
+        "questions": [
+            {"id": "Q6", "prompt": "Does this AI-generated C answer fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
+            {"id": "Q7", "prompt": "Can this AI-generated C answer be submitted directly?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
+            {"id": "Q8", "context": 'Input file content is "a\\n\\nb\\n".', "prompt": "What will the AI code return?", "options": [choice("A", "2"), choice("B", "1"), choice("C", "0"), choice("D", "3")]},
+            {"id": "Q9", "prompt": "According to the requirements, what should the correct return value be?", "options": [choice("A", "2"), choice("B", "3"), choice("C", "1"), choice("D", "0")]},
+            {"id": "Q10", "prompt": "Which group of problems does this answer have?", "options": [choice("A", "Only missing fclose"), choice("B", "It does not skip newline-only blank lines and uses append mode"), choice("C", "It cannot read files at all"), choice("D", "It has no problem")]},
+        ],
+    },
+    short_task(
+        3,
+        "C Task 3: Student Score Report",
+        """typedef struct { int id; char name[32]; int score; } Student;
+
+void build_report(Student students[], int n, int scores[][2], int score_n) {
+    for (int i = 0; i < n; i++) {
+        students[i].score = 0;
+        for (int j = 0; j < score_n; j++) {
+            if (scores[j][0] == students[i].id) {
+                students[i].score = scores[j][1];
+            }
+        }
+    }
+}""",
+        [
+            {"id": "Q11", "prompt": "Does this AI-generated C answer fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
+            {"id": "Q12", "prompt": "Can this AI-generated C answer be submitted directly?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
+            {"id": "Q13", "context": "students are [{id:2,name:Bob},{id:1,name:Ana}], scores={{1,90}}.", "prompt": "What will the AI code produce?", "options": [choice("A", "Bob has 0 and Ana has 90, original order unchanged"), choice("B", "Ana is moved before Bob"), choice("C", "Both scores become 90"), choice("D", "Compilation error")]},
+            {"id": "Q14", "prompt": "According to the task requirements, what should the score values be?", "options": [choice("A", "Bob has 0 and Ana has 90"), choice("B", "Bob has 90 and Ana has 0"), choice("C", "Both scores become 0"), choice("D", "No scores should be assigned")]},
+            {"id": "Q15", "prompt": "What is the main problem with this answer?", "options": [choice("A", "It has no problem"), choice("B", "It does not handle missing scores"), choice("C", "It changes names"), choice("D", "It cannot use structs")]},
+        ],
+        [
+            "Fill each student's score from the scores table by id.",
+            "Use score 0 when a student id is missing from scores.",
+            "Keep the original student order.",
+        ],
+    ),
+    short_task(
+        4,
+        "C Task 4: Array Average Excluding Sentinel Values",
+        """double average_valid(int arr[], int n) {
+    int sum = 0;
+    for (int i = 0; i < n; i++) {
+        sum += arr[i];
+    }
+    return sum / n;
+}""",
+        [
+            {"id": "Q16", "prompt": "Does this AI-generated C answer fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
+            {"id": "Q17", "prompt": "Can this AI-generated C answer be submitted directly?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
+            {"id": "Q18", "context": "arr={2,4,-1}, n=3. -1 means invalid and should be ignored.", "prompt": "What will the AI code return in normal integer-division C behavior?", "options": [choice("A", "3.0"), choice("B", "1.0"), choice("C", "2.5"), choice("D", "Error")]},
+            {"id": "Q19", "prompt": "According to the requirements, what should the correct return value be?", "options": [choice("A", "3.0"), choice("B", "1.0"), choice("C", "-1.0"), choice("D", "0.0")]},
+            {"id": "Q20", "prompt": "What is the main problem with this answer?", "options": [choice("A", "It uses a loop"), choice("B", "It includes sentinel -1 and performs integer division"), choice("C", "It returns double"), choice("D", "It has no problem")]},
+        ],
+        ["Ignore values equal to -1.", "Return the average of valid values as double.", "If there are no valid values, return 0.0."],
+    ),
+    short_task(
+        5,
+        "C Task 5: Category Revenue Aggregation",
+        """void category_revenue(double prices[], int qty[], int cat[], int n, double totals[], int cat_count) {
+    for (int i = 0; i < cat_count; i++) totals[i] = 0;
+    for (int i = 0; i < n; i++) {
+        totals[cat[i]] += prices[i] * qty[i];
+    }
+}""",
+        [
+            {"id": "Q21", "prompt": "Does this AI-generated C answer fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
+            {"id": "Q22", "prompt": "Can this AI-generated C answer be submitted directly?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
+            {"id": "Q23", "context": "prices={10,20,5}, qty={2,1,4}, cat={0,1,0}, cat_count=2.", "prompt": "What totals will the AI code produce?", "options": [choice("A", "totals[0]=40, totals[1]=20"), choice("B", "totals[0]=15, totals[1]=20"), choice("C", "totals[0]=20, totals[1]=20"), choice("D", "Compilation error")]},
+            {"id": "Q24", "prompt": "According to the requirements, what should the correct totals be?", "options": [choice("A", "totals[0]=40, totals[1]=20"), choice("B", "totals[0]=15, totals[1]=20"), choice("C", "totals[0]=20, totals[1]=20"), choice("D", "All totals should be 0")]},
+            {"id": "Q25", "prompt": "What is the main problem with this answer?", "options": [choice("A", "It has no problem"), choice("B", "It does not multiply price and quantity"), choice("C", "It does not initialize totals"), choice("D", "It uses arrays")]},
+        ],
+        ["Compute revenue as price * quantity.", "Aggregate revenue by category index.", "Set every category total before accumulation."],
+    ),
+    short_task(
+        6,
+        "C Task 6: CSV Product Summary",
+        """int summarize(FILE *fp, int ids[], int cats[], int product_n, double totals[], int cat_count) {
+    int id, units;
+    double price;
+    for (int i = 0; i < cat_count; i++) totals[i] = 0;
+    while (fscanf(fp, "%d,%d,%lf", &id, &units, &price) == 3) {
+        int cat = -1;
+        for (int i = 0; i < product_n; i++) {
+            if (ids[i] == id) cat = cats[i];
+        }
+        if (cat >= 0) {
+            totals[cat] += units + price;
+        }
+    }
+    return 1;
+}""",
+        [
+            {"id": "Q26", "prompt": "Does this AI-generated C answer fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
+            {"id": "Q27", "prompt": "Can this AI-generated C answer be submitted directly?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
+            {"id": "Q28", "context": "Rows are 1,2,10 and 2,3,5. ids={1,2}, cats={0,1}.", "prompt": "What totals will the AI code produce?", "options": [choice("A", "totals[0]=20, totals[1]=15"), choice("B", "totals[0]=12, totals[1]=8"), choice("C", "totals[0]=10, totals[1]=5"), choice("D", "return 0")]},
+            {"id": "Q29", "prompt": "According to the requirements, what should the correct totals be?", "options": [choice("A", "totals[0]=20, totals[1]=15"), choice("B", "totals[0]=12, totals[1]=8"), choice("C", "totals[0]=10, totals[1]=5"), choice("D", "return 0")]},
+            {"id": "Q30", "prompt": "Which group of problems does this answer have?", "options": [choice("A", "Revenue uses addition instead of multiplication and unknown/negative data does not fail"), choice("B", "Only the loop condition is wrong"), choice("C", "Only totals are not initialized"), choice("D", "It has no problem")]},
+        ],
+        ["Each row has product_id,units,price.", "Return 0 if product id is unknown or units/price is negative.", "Compute units * price.", "Aggregate totals by category and return 1 on success."],
+    ),
+]
+
+TASKS_BY_VERSION = {
+    "python": TASKS,
+    "c": C_TASKS,
+}
 
 
-def task_question_ids(task_id: int) -> list[str]:
-    return [question["id"] for question in get_task(task_id)["questions"]]
+def normalize_questionnaire_version(version: str | None) -> str:
+    return "c" if version == "c" else "python"
+
+
+def get_task(task_id: int, version: str = "python") -> dict:
+    return TASKS_BY_VERSION[normalize_questionnaire_version(version)][task_id - 1]
+
+
+def task_question_ids(task_id: int, version: str = "python") -> list[str]:
+    return [question["id"] for question in get_task(task_id, version)["questions"]]
 
 
 ZH_TASK_TEXT = {
@@ -711,9 +930,9 @@ COMMON_OPTION_TEXT_ZH = {
 }
 
 
-def localized_task(task_id: int, lang: str = "en") -> dict:
-    task = deepcopy(get_task(task_id))
-    if lang != "zh":
+def localized_task(task_id: int, lang: str = "en", version: str = "python") -> dict:
+    task = deepcopy(get_task(task_id, version))
+    if lang != "zh" or normalize_questionnaire_version(version) != "python":
         return task
     zh = ZH_TASK_TEXT.get(task_id, {})
     task["title"] = zh.get("title", task["title"])

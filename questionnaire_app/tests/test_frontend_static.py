@@ -43,12 +43,16 @@ def test_pretest_omits_age_and_gender_and_uses_major_dropdown():
 
     assert '["age",' not in pretest_fields
     assert '["gender",' not in pretest_fields
+    assert '["questionnaire_version", "select"]' in pretest_fields
     assert '["major", "select"]' in pretest_fields
+    assert "majorOptionsByVersion" in app_js
     assert '"计算机类"' in app_js
-    assert '"电子信息类"' in app_js
-    assert '"自动化类"' in app_js
-    assert '"电气类"' in app_js
-    assert '"机械类"' in app_js
+    assert '"计算机科学与技术"' in app_js
+    assert '"网络空间安全"' in app_js
+    assert '"数字媒体技术"' in app_js
+    assert '"物联网工程"' in app_js
+    assert '"智能科技与技术"' in app_js
+    assert '"软件工程"' in app_js
 
 
 def test_frontend_shows_research_notice_after_pretest_and_tracks_time():
@@ -119,8 +123,12 @@ def test_mobile_layout_prevents_page_level_horizontal_overflow():
 def test_admin_page_has_completion_and_incomplete_reason_filters():
     admin_html = (ROOT / "static" / "admin.html").read_text(encoding="utf-8")
 
+    assert 'id="versionFilter"' in admin_html
     assert 'id="completionFilter"' in admin_html
     assert 'id="incompleteReasonFilter"' in admin_html
+    assert 'id="bulkDeleteSelectedBtn"' in admin_html
+    assert 'id="bulkDeleteFilteredBtn"' in admin_html
+    assert "/api/admin/sessions/bulk-delete" in admin_html
     assert 'value="normal_completed"' in admin_html
     assert 'value="pending_posttest"' in admin_html
     assert 'value="quality_failed"' in admin_html
@@ -128,4 +136,4 @@ def test_admin_page_has_completion_and_incomplete_reason_filters():
     assert "总耗时" in admin_html
     assert "function filteredSessions" in admin_html
     assert "function shouldIncludeAbandoned" in admin_html
-    assert "questionnaire_normal_completed_export.xlsx" in admin_html
+    assert "questionnaire_${version}_normal_completed_export.xlsx" in admin_html
