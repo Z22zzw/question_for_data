@@ -76,9 +76,15 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         if db_path
         else base_dir / "data" / "questionnaire_c.sqlite"
     )
+    agent_db_path = (
+        db_path.with_name(f"{db_path.stem}_agent{db_path.suffix}")
+        if db_path
+        else base_dir / "data" / "questionnaire_agent.sqlite"
+    )
     dbs = {
         "python": Database(python_db_path),
         "c": Database(c_db_path),
+        "agent": Database(agent_db_path),
     }
     password = admin_password or os.getenv("ADMIN_PASSWORD", "admin123")
     app = FastAPI(title="AI Supervision A/B Questionnaire")
@@ -302,7 +308,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
             raise HTTPException(status_code=409, detail="This task is not available")
         db.mark_task_started(session_id, task_id)
         task = localized_task(task_id, lang, version)
-        if session["group_name"] != "B" or task_id not in (1, 2):
+        if session["group_name"] != "B" or (version != "agent" and task_id not in (1, 2)):
             task["supervision_card"] = None
         return task
 
@@ -388,7 +394,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         version = normalize_version_or_400(pretest.get("questionnaire_version"))
         pretest["questionnaire_version"] = version
         db = dbs[version]
-        if version == "c":
+        if version != "python":
             pretest.pop("numpy_familiarity", None)
         missing = [field for field in pretest_fields_for_version(version) if pretest.get(field) in ("", None)]
         if missing:

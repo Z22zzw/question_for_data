@@ -48,6 +48,9 @@ def test_pretest_omits_age_and_gender_and_uses_major_dropdown():
     assert "function pretestFieldsForVersion" in app_js
     assert 'name !== "numpy_familiarity"' in app_js
     assert "delete data.numpy_familiarity" in app_js
+    assert '"Agent Version"' in app_js
+    assert '"agent"' in app_js
+    assert "Agent 监督版本" in app_js
     assert "majorOptionsByVersion" in app_js
     assert "familiarityLabelsByVersion" in app_js
     assert '"C Language Proficiency"' in app_js
@@ -139,6 +142,7 @@ def test_admin_page_has_completion_and_incomplete_reason_filters():
     admin_html = (ROOT / "static" / "admin.html").read_text(encoding="utf-8")
 
     assert 'id="versionFilter"' in admin_html
+    assert 'value="agent"' in admin_html
     assert 'id="completionFilter"' in admin_html
     assert 'id="incompleteReasonFilter"' in admin_html
     assert 'id="bulkDeleteSelectedBtn"' in admin_html

@@ -223,9 +223,9 @@ const i18n = {
 
 const optionLabels = {
   questionnaire_version: {
-    en: ["Python Version", "C Version"],
-    zh: ["Python 版本", "C 语言版本"],
-    values: ["python", "c"],
+    en: ["Python Version", "C Version", "Agent Version"],
+    zh: ["Python 版本", "C 语言版本", "Agent 监督版本"],
+    values: ["python", "c", "agent"],
   },
   grade_year: {
     en: ["Year 1", "Year 2", "Year 3", "Year 4", "Master", "PhD", "Other"],
@@ -280,6 +280,11 @@ const majorOptionsByVersion = {
     zh: ["计算机科学与技术", "网络空间安全", "数字媒体技术", "物联网工程", "智能科技与技术", "软件工程"],
     values: ["计算机科学与技术", "网络空间安全", "数字媒体技术", "物联网工程", "智能科技与技术", "软件工程"],
   },
+  agent: {
+    en: ["Computer Science", "Data Science", "Mathematics", "Engineering", "Information Management"],
+    zh: ["计算机类", "数据科学类", "数学类", "工程类", "信息管理类"],
+    values: ["Computer Science", "Data Science", "Mathematics", "Engineering", "Information Management"],
+  },
 };
 
 const familiarityLabelsByVersion = {
@@ -290,6 +295,10 @@ const familiarityLabelsByVersion = {
   c: {
     en: "C Language Proficiency",
     zh: "C 语言掌握程度",
+  },
+  agent: {
+    en: "Programming Proficiency",
+    zh: "编程基础掌握程度",
   },
 };
 
@@ -538,7 +547,7 @@ function draftKey(name) {
 
 function readForm(form) {
   const data = Object.fromEntries(new FormData(form).entries());
-  if (data.questionnaire_version === "c") delete data.numpy_familiarity;
+  if (data.questionnaire_version !== "python") delete data.numpy_familiarity;
   return data;
 }
 
@@ -575,7 +584,9 @@ function readDraftData(key) {
 }
 
 function updateMajorOptions(form) {
-  const version = form.elements.questionnaire_version?.value === "c" ? "c" : "python";
+  const version = ["python", "c", "agent"].includes(form.elements.questionnaire_version?.value)
+    ? form.elements.questionnaire_version.value
+    : "python";
   const major = form.elements.major;
   if (!major) return;
   const previous = major.value;
@@ -729,7 +740,9 @@ function renderPretest() {
   timerLabel.textContent = formatClock(state.timeLimitSeconds);
   timerLabel.classList.remove("warning");
   const draftData = readDraftData("pretest");
-  const selectedVersion = draftData.questionnaire_version === "c" ? "c" : "python";
+  const selectedVersion = ["python", "c", "agent"].includes(draftData.questionnaire_version)
+    ? draftData.questionnaire_version
+    : "python";
   const fields = pretestFieldsForVersion(selectedVersion)
     .map(([name, type]) => {
       const label = pretestFieldLabel(name, selectedVersion);

@@ -223,6 +223,43 @@ def test_python_and_c_versions_use_isolated_databases(tmp_path: Path):
     assert "numpy_familiarity" not in c_detail["pretest"]
 
 
+def test_agent_version_uses_isolated_database_and_agent_cards(tmp_path: Path):
+    db_path = tmp_path / "test.sqlite"
+    app = create_app(db_path=db_path, admin_password="secret")
+    python_client = TestClient(app)
+    agent_client_a = TestClient(app)
+    agent_client_b = TestClient(app)
+
+    python_data = submit_pretest(python_client, "python")
+    agent_a_data = submit_pretest(agent_client_a, "agent")
+    agent_b_data = submit_pretest(agent_client_b, "agent")
+
+    assert python_data["participant_id"] == 1
+    assert agent_a_data["participant_id"] == 1
+    assert agent_b_data["participant_id"] == 2
+
+    agent_task_a = agent_client_a.get("/api/task/1").json()
+    agent_task_b = agent_client_b.get("/api/task/1").json()
+
+    assert agent_task_a["title"].startswith("Agent Task 1")
+    assert "Agent action log" in agent_task_a["code"]
+    assert agent_task_a["supervision_card"] is None
+    assert agent_task_b["title"].startswith("Agent Task 1")
+    assert agent_task_b["supervision_card"] is not None
+    assert agent_task_b["supervision_card"][0]["dimension"] == "Factuality"
+
+    python_sessions = python_client.get("/api/admin/sessions?password=secret&version=python").json()
+    agent_sessions = python_client.get("/api/admin/sessions?password=secret&version=agent").json()
+    agent_detail = python_client.get(
+        f"/api/admin/sessions/{agent_sessions[0]['session_id']}?password=secret&version=agent"
+    ).json()
+
+    assert len(python_sessions) == 1
+    assert len(agent_sessions) == 2
+    assert agent_sessions[0]["questionnaire_version"] == "agent"
+    assert "numpy_familiarity" not in agent_detail["pretest"]
+
+
 def test_admin_bulk_delete_applies_only_to_selected_version(tmp_path: Path):
     db_path = tmp_path / "test.sqlite"
     app = create_app(db_path=db_path, admin_password="secret")
@@ -396,6 +433,39 @@ def test_admin_export_uses_selected_version_and_c_omits_numpy(tmp_path: Path):
     assert c_row["participant_id"] == c_pretest["participant_id"]
     assert python_row["questionnaire_version"] == "python"
     assert c_row["questionnaire_version"] == "c"
+
+
+def test_admin_export_uses_agent_version_database(tmp_path: Path):
+    db_path = tmp_path / "test.sqlite"
+    app = create_app(db_path=db_path, admin_password="secret")
+    client = TestClient(app)
+
+    python_pretest = submit_pretest(client, "python")
+    complete_all_tasks(client)
+    assert client.post("/api/posttest", json=posttest_payload()).status_code == 200
+    mark_valid_completion_times(db_path, latest_session_id(client))
+
+    agent_pretest = submit_pretest(client, "agent")
+    complete_all_tasks(client)
+    assert client.post("/api/posttest", json=posttest_payload()).status_code == 200
+    agent_session_id = client.get("/api/admin/sessions?password=secret&version=agent").json()[0]["session_id"]
+    mark_valid_completion_times(db_path.with_name("test_agent.sqlite"), agent_session_id)
+
+    agent_export = client.get("/api/admin/export?password=secret&version=agent")
+
+    assert agent_export.status_code == 200
+    assert "questionnaire_agent_normal_completed_export.xlsx" in agent_export.headers["content-disposition"]
+
+    export_path = tmp_path / "agent_export.xlsx"
+    export_path.write_bytes(agent_export.content)
+    sheet = load_workbook(export_path).active
+    headers = [cell.value for cell in sheet[1]]
+    row = dict(zip(headers, [cell.value for cell in sheet[2]]))
+
+    assert "numpy_familiarity" not in headers
+    assert row["participant_id"] == agent_pretest["participant_id"]
+    assert row["participant_id"] != python_pretest["participant_id"] or row["questionnaire_version"] == "agent"
+    assert row["questionnaire_version"] == "agent"
 
 
 def test_timeout_marks_session_blocks_submissions_and_reports_duration(tmp_path: Path):
