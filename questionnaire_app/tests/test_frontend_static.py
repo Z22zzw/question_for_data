@@ -113,6 +113,9 @@ def test_frontend_task_page_explains_how_to_answer_and_supervision_card_role():
     assert "taskGuideSteps" in app_js
     assert "taskSectionLabels" in app_js
     assert "supervisionIntro" in app_js
+    assert "agentTrace" in app_js
+    assert "Agent运行流程" in app_js
+    assert 'task.questionnaire_version === "agent"' in app_js
     assert "正式问题" in app_js
     assert "AI 生成的代码" in app_js
 

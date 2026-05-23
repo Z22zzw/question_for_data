@@ -1363,6 +1363,7 @@ COMMON_OPTION_TEXT_ZH = {
 def localized_task(task_id: int, lang: str = "en", version: str = "python") -> dict:
     normalized_version = normalize_questionnaire_version(version)
     task = deepcopy(get_task(task_id, normalized_version))
+    task["questionnaire_version"] = normalized_version
     if lang != "zh":
         return task
     if normalized_version == "c":

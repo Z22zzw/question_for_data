@@ -242,6 +242,7 @@ def test_agent_version_uses_isolated_database_and_agent_cards(tmp_path: Path):
     agent_task_b = agent_client_b.get("/api/task/1").json()
 
     assert agent_task_a["title"].startswith("Agent Task 1")
+    assert agent_task_a["questionnaire_version"] == "agent"
     assert "Agent action log" in agent_task_a["code"]
     assert "EN: gcc compiles" in agent_task_a["code"]
     assert "ZH: gcc 表示编译" in agent_task_a["code"]

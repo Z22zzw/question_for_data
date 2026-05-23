@@ -83,6 +83,7 @@ const i18n = {
     taskSectionLabels: {
       requirements: "Task Requirements",
       aiCode: "AI-generated Code",
+      agentTrace: "Agent Execution Trace",
       questions: "Formal Questions",
       givenInput: "Given Input",
     },
@@ -189,6 +190,7 @@ const i18n = {
     taskSectionLabels: {
       requirements: "任务要求",
       aiCode: "AI 生成的代码",
+      agentTrace: "Agent运行流程",
       questions: "正式问题",
       givenInput: "给定输入",
     },
@@ -852,6 +854,7 @@ async function loadTask(taskId) {
 
 function renderTask(task) {
   const sectionLabels = t("taskSectionLabels");
+  const codeSectionTitle = task.questionnaire_version === "agent" ? sectionLabels.agentTrace : sectionLabels.aiCode;
   const taskGuide = `
     <section class="task-guide">
       <h2>${t("taskGuideTitle")}</h2>
@@ -900,7 +903,7 @@ function renderTask(task) {
         <h2>${escapeHtml(task.title)}</h2>
         <h3>${sectionLabels.requirements}</h3>
         <ol class="requirements">${task.requirements.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ol>
-        <h3 class="section-subtitle">${sectionLabels.aiCode}</h3>
+        <h3 class="section-subtitle">${codeSectionTitle}</h3>
         <pre><code>${escapeHtml(task.code)}</code></pre>
       </section>
       ${supervision}
