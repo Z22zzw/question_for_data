@@ -243,6 +243,9 @@ def test_agent_version_uses_isolated_database_and_agent_cards(tmp_path: Path):
 
     assert agent_task_a["title"].startswith("Agent Task 1")
     assert "Agent action log" in agent_task_a["code"]
+    assert "EN: gcc compiles" in agent_task_a["code"]
+    assert "ZH: gcc 表示编译" in agent_task_a["code"]
+    assert "--ids and --qty are test arguments" in agent_task_a["code"]
     assert agent_task_a["supervision_card"] is None
     assert agent_task_b["title"].startswith("Agent Task 1")
     assert agent_task_b["supervision_card"] is not None
