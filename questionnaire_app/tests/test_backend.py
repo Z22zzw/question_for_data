@@ -91,21 +91,14 @@ def correct_answers(start: int, end: int) -> dict:
 
 def posttest_payload() -> dict:
     return {
-        "post_attitude_useful": "Agree",
-        "post_attitude_confident": "Agree",
-        "post_attitude_learning_value": "Strongly agree",
-        "post_attitude_cognitive_load": "Neutral",
-        "post_attitude_future_use": "Agree",
-        "post_strategy_requirements_first": "Strongly agree",
-        "post_strategy_trace_code": "Agree",
-        "post_strategy_predict_output": "Agree",
-        "post_strategy_test_cases": "Strongly agree",
-        "post_strategy_delivery_risk": "Agree",
-        "post_trust_ai_correctness": "Neutral",
-        "post_trust_ai_boundary_cases": "Disagree",
-        "post_trust_ai_direct_submit": "Strongly disagree",
-        "post_trust_ai_with_review": "Agree",
-        "post_trust_ai_overall": "Neutral",
+        "post_supervisor_role": "D",
+        "post_requirements_first": "E",
+        "post_missing_conditions": "D",
+        "post_code_logic_tracing": "D",
+        "post_output_prediction": "D",
+        "post_test_design": "E",
+        "post_human_intervention": "D",
+        "post_responsible_submission": "E",
     }
 
 
@@ -358,9 +351,10 @@ def test_scoring_and_excel_export(tmp_path: Path):
     assert summary_before_posttest["next_stage"] == "posttest"
 
     posttest_schema = client.get("/api/posttest?lang=en").json()
-    assert posttest_schema["title"] == "Post-task Questionnaire"
-    assert len(posttest_schema["questions"]) == 15
-    assert posttest_schema["questions"][0]["id"] == "post_attitude_useful"
+    assert posttest_schema["title"] == "AI Agent Supervision Competence Post-test"
+    assert len(posttest_schema["questions"]) == 8
+    assert posttest_schema["questions"][0]["id"] == "post_supervisor_role"
+    assert posttest_schema["questions"][0]["options"][0]["value"] == "A"
 
     posttest_response = client.post("/api/posttest", json=posttest_payload())
     assert posttest_response.status_code == 200
@@ -371,6 +365,7 @@ def test_scoring_and_excel_export(tmp_path: Path):
     assert summary["scores"]["deliverability_score"] == 12
     assert summary["scores"]["reasoning_score"] == 12
     assert summary["scores"]["error_identification_score"] == 6
+    assert summary["posttest_scores"]["post_agent_supervision_score"] == 4.38
 
     mark_valid_completion_times(tmp_path / "test.sqlite", latest_session_id(client))
     export_response = client.get("/api/admin/export?password=secret")
@@ -384,8 +379,9 @@ def test_scoring_and_excel_export(tmp_path: Path):
     data = dict(zip(headers, row))
     assert data["participant_id"] == pretest["participant_id"]
     assert data["total_score"] == 30
-    assert data["post_attitude_useful"] == "Agree"
-    assert data["post_trust_ai_direct_submit"] == "Strongly disagree"
+    assert data["post_supervisor_role"] == "D"
+    assert data["post_responsible_submission"] == "E"
+    assert data["post_agent_supervision_score"] == 4.38
     assert "total_duration_hms" in headers
     assert "task1_duration_hms" in headers
     assert "start_time" not in headers
@@ -589,10 +585,28 @@ def test_posttest_is_same_for_a_and_b_and_available_after_tasks(tmp_path: Path):
             assert response.status_code == 200
         schema = client.get("/api/posttest?lang=zh").json()
         posttest_titles.append(schema["title"])
-        assert "态度" in schema["sections"][0]["title"]
-        assert len(schema["questions"]) == 15
+        assert "监督意识" in schema["sections"][0]["title"]
+        assert len(schema["questions"]) == 8
 
     assert posttest_titles[0] == posttest_titles[1]
+
+
+def test_admin_can_close_questionnaire_version_for_frontend(tmp_path: Path):
+    client = make_client(tmp_path)
+
+    settings = client.get("/api/questionnaire-settings").json()
+    assert {item["version"]: item["enabled"] for item in settings["versions"]}["agent"] is True
+
+    update = client.put(
+        "/api/admin/questionnaire-settings?password=secret",
+        json={"enabled_versions": {"agent": False}},
+    )
+    assert update.status_code == 200
+    assert {item["version"]: item["enabled"] for item in update.json()["versions"]}["agent"] is False
+
+    response = client.post("/api/pretest", json=pretest_payload("agent"))
+    assert response.status_code == 403
+    assert response.json()["detail"] == "This questionnaire version is currently closed"
 
 
 def test_session_current_and_reset_use_cookie_not_local_storage_ids(tmp_path: Path):

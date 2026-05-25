@@ -17,6 +17,9 @@
     .field input, .field select { padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
     .filter-field { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #555; }
     .filter-field select { padding: 7px 10px; border: 1px solid #ddd; border-radius: 6px; background: #fff; font-size: 13px; }
+    .version-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 10px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; }
+    .version-controls strong { margin-right: 2px; }
+    .version-controls label { display: flex; align-items: center; gap: 4px; }
     .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; }
     .btn-primary { background: #1a1a2e; color: #fff; }
     .btn-primary:hover { background: #2d2d5e; }
@@ -89,6 +92,13 @@
         <option value="agent">Agent 监督版本</option>
       </select>
     </label>
+    <div class="version-controls" id="versionControls">
+      <strong>前台开放</strong>
+      <label><input type="checkbox" data-version-toggle="python" /> Python</label>
+      <label><input type="checkbox" data-version-toggle="c" /> C</label>
+      <label><input type="checkbox" data-version-toggle="agent" /> Agent</label>
+      <span id="settingsMsg" style="color:#666"></span>
+    </div>
     <button class="btn btn-danger" id="bulkDeleteSelectedBtn">删除选中</button>
     <button class="btn btn-danger" id="bulkDeleteFilteredBtn">删除当前筛选结果</button>
     <label class="filter-field">
@@ -118,7 +128,7 @@
   <table id="sessionTable">
     <thead>
       <tr>
-        <th><input type="checkbox" id="selectAllVisible" /></th><th>ID</th><th>分组</th><th>状态</th><th>总分</th><th>质量</th><th>总耗时</th><th>创建时间</th><th>完成时间</th><th>操作</th>
+        <th><input type="checkbox" id="selectAllVisible" /></th><th>ID</th><th>分组</th><th>状态</th><th>总分</th><th>后测均分</th><th>质量</th><th>总耗时</th><th>创建时间</th><th>完成时间</th><th>操作</th>
       </tr>
     </thead>
     <tbody id="sessionBody"></tbody>
@@ -138,6 +148,7 @@
 let pw = '';
 let sessions = [];
 let selectedSessionIds = new Set();
+let questionnaireSettings = {python: true, c: true, agent: true};
 
 const ANSWER_KEY = {
   Q1:'B',Q2:'B',Q3:'B',Q4:'A',Q5:'B',Q6:'B',Q7:'B',Q8:'D',Q9:'A',Q10:'B',
@@ -161,6 +172,7 @@ document.getElementById('loginBtn').onclick = async () => {
     document.getElementById('loginPanel').style.display = 'none';
     document.getElementById('mainPanel').style.display = 'block';
     document.getElementById('topbarInfo').textContent = '已登录';
+    await loadQuestionnaireSettings();
     loadSessions();
   } catch {
     document.getElementById('loginError').textContent = '密码错误';
@@ -174,6 +186,37 @@ async function loadSessions() {
   const incl = shouldIncludeAbandoned();
   sessions = await api('/api/admin/sessions?include_abandoned=' + incl);
   renderTable();
+}
+
+async function loadQuestionnaireSettings() {
+  const data = await api('/api/admin/questionnaire-settings');
+  questionnaireSettings = {};
+  for (const item of data.versions || []) {
+    questionnaireSettings[item.version] = item.enabled;
+  }
+  document.querySelectorAll('[data-version-toggle]').forEach(input => {
+    input.checked = Boolean(questionnaireSettings[input.dataset.versionToggle]);
+  });
+}
+
+async function saveQuestionnaireSettings() {
+  const enabled_versions = {};
+  document.querySelectorAll('[data-version-toggle]').forEach(input => {
+    enabled_versions[input.dataset.versionToggle] = input.checked;
+  });
+  const msg = document.getElementById('settingsMsg');
+  msg.textContent = '保存中...';
+  const data = await api('/api/admin/questionnaire-settings', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled_versions }),
+  });
+  questionnaireSettings = {};
+  for (const item of data.versions || []) {
+    questionnaireSettings[item.version] = item.enabled;
+  }
+  msg.textContent = '已保存';
+  setTimeout(() => { msg.textContent = ''; }, 1200);
 }
 
 function shouldIncludeAbandoned() {
@@ -222,6 +265,7 @@ function renderTable() {
       <td><span class="badge ${groupBadge}">${s.group}</span></td>
       <td><span class="badge ${statusBadge}">${completionLabel}</span></td>
       <td>${s.total_score ?? '-'} / 30</td>
+      <td>${s.post_agent_supervision_score ?? '-'}</td>
       <td>${qualityBadge}${s.quality_flags.length ? `<div class="flag-list">${s.quality_flags.join('<br>')}</div>` : '✓'}</td>
       <td style="font-size:12px">${s.total_duration_hms || '-'}</td>
       <td style="font-size:12px">${s.created_at ? s.created_at.slice(0,16).replace('T',' ') : '-'}</td>
@@ -295,6 +339,7 @@ async function openDetail(id) {
   const posttest = data.posttest || {};
   const answers = data.answers || {};
   const scores = data.scores || {};
+  const posttestScores = data.posttest_scores || {};
 
   const answersHtml = Object.entries(ANSWER_KEY).map(([qid, correct]) => {
     const given = answers[qid];
@@ -325,6 +370,7 @@ async function openDetail(id) {
       ${kv('可交付性', scores.deliverability_score)}
       ${kv('推理', scores.reasoning_score)}
       ${kv('错误识别', scores.error_identification_score)}
+      ${kv('后测 AI agent supervision mindset 均分', posttestScores.post_agent_supervision_score)}
     </div>
 
     <div class="section-title">答题详情（绿=正确 红=错误）</div>
@@ -373,6 +419,9 @@ document.getElementById('detailModal').onclick = e => { if (e.target === e.curre
 
 document.getElementById('refreshBtn').onclick = loadSessions;
 document.getElementById('versionFilter').onchange = loadSessions;
+document.querySelectorAll('[data-version-toggle]').forEach(input => {
+  input.onchange = saveQuestionnaireSettings;
+});
 document.getElementById('showAbandoned').onchange = loadSessions;
 document.getElementById('completionFilter').onchange = loadSessions;
 document.getElementById('incompleteReasonFilter').onchange = loadSessions;

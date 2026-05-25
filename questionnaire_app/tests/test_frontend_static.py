@@ -156,6 +156,10 @@ def test_admin_page_has_completion_and_incomplete_reason_filters():
     assert 'value="quality_failed"' in admin_html
     assert 'value="timeout"' in admin_html
     assert "总耗时" in admin_html
+    assert "前台开放" in admin_html
+    assert 'data-version-toggle="agent"' in admin_html
+    assert "/api/admin/questionnaire-settings" in admin_html
+    assert "post_agent_supervision_score" in admin_html
     assert "function filteredSessions" in admin_html
     assert "function shouldIncludeAbandoned" in admin_html
     assert "questionnaire_${version}_normal_completed_export.xlsx" in admin_html

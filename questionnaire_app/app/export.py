@@ -6,7 +6,7 @@ from openpyxl import Workbook
 
 from .database import decode_json, seconds_between, seconds_to_hms
 from .questionnaire import ANSWER_KEY, POSTTEST_FIELDS, PRETEST_FIELDS, SUPERVISION_KEY
-from .scoring import score_answers, score_supervision
+from .scoring import score_answers, score_posttest, score_supervision
 
 
 def pretest_fields_for_export(version: str) -> list[str]:
@@ -29,6 +29,7 @@ def build_export_workbook(rows: list[dict], version: str = "python") -> bytes:
     headers.append("total_duration_hms")
     headers.extend(pretest_fields)
     headers.extend(POSTTEST_FIELDS)
+    headers.append("post_agent_supervision_score")
     headers.extend(ANSWER_KEY.keys())
     headers.extend(f"{qid}_score" for qid in ANSWER_KEY)
     headers.extend(
@@ -60,6 +61,7 @@ def build_export_workbook(rows: list[dict], version: str = "python") -> bytes:
             submit_times[response["task_id"]] = response["submitted_at"]
         formal_scores = score_answers(answers)
         supervision_scores = score_supervision(supervision)
+        posttest_scores = score_posttest(posttest)
 
         values = [
             session["id"],
@@ -74,6 +76,7 @@ def build_export_workbook(rows: list[dict], version: str = "python") -> bytes:
         values.append(seconds_to_hms(seconds_between(session["created_at"], session["completed_at"])))
         values.extend(pretest.get(field) for field in pretest_fields)
         values.extend(posttest.get(field) for field in POSTTEST_FIELDS)
+        values.append(posttest_scores["post_agent_supervision_score"])
         values.extend(answers.get(qid) for qid in ANSWER_KEY)
         values.extend(formal_scores["per_question"].get(qid, 0) for qid in ANSWER_KEY)
         values.extend(

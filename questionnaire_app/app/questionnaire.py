@@ -78,164 +78,96 @@ SUPERVISION_KEY = {
     "T2_SC_responsibility": "Cannot submit",
 }
 
-LIKERT_VALUES = ["Strongly disagree", "Disagree", "Neutral", "Agree", "Strongly agree"]
+LIKERT_VALUES = ["A", "B", "C", "D", "E"]
+LIKERT_LABELS_EN = ["Strongly disagree", "Disagree", "Neutral", "Agree", "Strongly agree"]
 LIKERT_LABELS_ZH = ["非常不同意", "不同意", "一般", "同意", "非常同意"]
 
 POSTTEST_SECTIONS = [
     {
-        "id": "attitude",
-        "title": {"en": "Attitudes toward AI Code Supervision", "zh": "对 AI 代码监督的态度"},
+        "id": "mindset",
+        "title": {"en": "AI Agent Supervision Mindset", "zh": "AI 编程智能体监督意识"},
         "question_ids": [
-            "post_attitude_useful",
-            "post_attitude_confident",
-            "post_attitude_learning_value",
-            "post_attitude_cognitive_load",
-            "post_attitude_future_use",
+            "post_supervisor_role",
+            "post_requirements_first",
+            "post_missing_conditions",
+            "post_code_logic_tracing",
+            "post_output_prediction",
+            "post_test_design",
         ],
     },
     {
-        "id": "strategy",
-        "title": {"en": "Supervision Strategies", "zh": "监督策略"},
+        "id": "responsibility",
+        "title": {"en": "Responsibility and Intervention", "zh": "责任与人工干预"},
         "question_ids": [
-            "post_strategy_requirements_first",
-            "post_strategy_trace_code",
-            "post_strategy_predict_output",
-            "post_strategy_test_cases",
-            "post_strategy_delivery_risk",
-        ],
-    },
-    {
-        "id": "trust",
-        "title": {"en": "Trust in AI-generated Code", "zh": "对 AI 代码的信任程度"},
-        "question_ids": [
-            "post_trust_ai_correctness",
-            "post_trust_ai_boundary_cases",
-            "post_trust_ai_direct_submit",
-            "post_trust_ai_with_review",
-            "post_trust_ai_overall",
+            "post_human_intervention",
+            "post_responsible_submission",
         ],
     },
 ]
 
 POSTTEST_QUESTIONS = [
     {
-        "id": "post_attitude_useful",
-        "section": "attitude",
+        "id": "post_supervisor_role",
+        "section": "mindset",
         "prompt": {
-            "en": "Reviewing AI-generated code is a useful skill for programming work.",
-            "zh": "审查 AI 生成代码是一项有用的编程能力。",
+            "en": "When working with AI coding agents, I see my role as supervising their output rather than simply accepting it.",
+            "zh": "使用 AI 编程智能体时，我认为自己的角色是监督其输出，而不是简单接受其答案。",
         },
     },
     {
-        "id": "post_attitude_confident",
-        "section": "attitude",
+        "id": "post_requirements_first",
+        "section": "mindset",
         "prompt": {
-            "en": "After this questionnaire, I feel more confident evaluating AI-generated code.",
-            "zh": "完成本问卷后，我更有信心评估 AI 生成代码。",
+            "en": "When evaluating AI-generated code, I first check whether it follows all task requirements.",
+            "zh": "评估 AI 生成代码时，我会首先检查它是否符合所有任务要求。",
         },
     },
     {
-        "id": "post_attitude_learning_value",
-        "section": "attitude",
+        "id": "post_missing_conditions",
+        "section": "mindset",
         "prompt": {
-            "en": "This task format helped me understand what code review requires.",
-            "zh": "这种任务形式帮助我理解代码审查需要关注什么。",
+            "en": "I pay attention to whether the AI has missed important conditions, constraints, or edge cases in the task.",
+            "zh": "我会关注 AI 是否遗漏了任务中的重要条件、限制或边界情况。",
         },
     },
     {
-        "id": "post_attitude_cognitive_load",
-        "section": "attitude",
+        "id": "post_code_logic_tracing",
+        "section": "mindset",
         "prompt": {
-            "en": "The tasks required a high level of mental effort.",
-            "zh": "这些任务需要较高的认知投入。",
+            "en": "I trace the actual logic of AI-generated code rather than only judging whether it looks reasonable.",
+            "zh": "我会追踪 AI 生成代码的实际逻辑，而不只是判断它看起来是否合理。",
         },
     },
     {
-        "id": "post_attitude_future_use",
-        "section": "attitude",
+        "id": "post_output_prediction",
+        "section": "mindset",
         "prompt": {
-            "en": "I would like to use similar checklists when reviewing AI-generated code in the future.",
-            "zh": "未来审查 AI 代码时，我愿意使用类似检查清单。",
+            "en": "I try to predict the output of AI-generated code for specific inputs to find possible errors.",
+            "zh": "我会尝试预测 AI 生成代码在具体输入下的输出，以发现可能的错误。",
         },
     },
     {
-        "id": "post_strategy_requirements_first",
-        "section": "strategy",
+        "id": "post_test_design",
+        "section": "mindset",
         "prompt": {
-            "en": "When reviewing AI code, I first compare it against the task requirements.",
-            "zh": "审查 AI 代码时，我会先对照任务要求。",
+            "en": "I design test cases or counterexamples to check whether AI-generated code is correct.",
+            "zh": "我会设计测试用例或反例来检查 AI 生成代码是否正确。",
         },
     },
     {
-        "id": "post_strategy_trace_code",
-        "section": "strategy",
+        "id": "post_human_intervention",
+        "section": "responsibility",
         "prompt": {
-            "en": "I trace the actual code logic instead of only reading the surface structure.",
-            "zh": "我会追踪代码的实际逻辑，而不只是看表面结构。",
+            "en": "I can judge when AI-generated code needs human correction or intervention.",
+            "zh": "我能够判断 AI 生成代码何时需要人工修改或干预。",
         },
     },
     {
-        "id": "post_strategy_predict_output",
-        "section": "strategy",
+        "id": "post_responsible_submission",
+        "section": "responsibility",
         "prompt": {
-            "en": "I predict outputs for concrete inputs to check AI-generated code.",
-            "zh": "我会用具体输入预测输出来检查 AI 代码。",
-        },
-    },
-    {
-        "id": "post_strategy_test_cases",
-        "section": "strategy",
-        "prompt": {
-            "en": "I design edge cases or counterexamples to test AI-generated code.",
-            "zh": "我会设计边界用例或反例来测试 AI 代码。",
-        },
-    },
-    {
-        "id": "post_strategy_delivery_risk",
-        "section": "strategy",
-        "prompt": {
-            "en": "Before submitting AI-generated code, I consider delivery risk and responsibility.",
-            "zh": "提交 AI 代码前，我会考虑交付风险和责任。",
-        },
-    },
-    {
-        "id": "post_trust_ai_correctness",
-        "section": "trust",
-        "prompt": {
-            "en": "I generally trust AI-generated code to be correct for ordinary programming tasks.",
-            "zh": "对于普通编程任务，我总体信任 AI 生成代码的正确性。",
-        },
-    },
-    {
-        "id": "post_trust_ai_boundary_cases",
-        "section": "trust",
-        "prompt": {
-            "en": "I trust AI-generated code to handle boundary cases well.",
-            "zh": "我信任 AI 生成代码能较好处理边界情况。",
-        },
-    },
-    {
-        "id": "post_trust_ai_direct_submit",
-        "section": "trust",
-        "prompt": {
-            "en": "If AI-generated code looks reasonable, I would submit it without detailed review.",
-            "zh": "如果 AI 生成代码看起来合理，我会不经详细审查直接提交。",
-        },
-    },
-    {
-        "id": "post_trust_ai_with_review",
-        "section": "trust",
-        "prompt": {
-            "en": "With careful human review, AI-generated code can be reliable.",
-            "zh": "经过认真人工审查后，AI 生成代码可以是可靠的。",
-        },
-    },
-    {
-        "id": "post_trust_ai_overall",
-        "section": "trust",
-        "prompt": {
-            "en": "Overall, I trust AI tools as programming assistants.",
-            "zh": "总体而言，我信任 AI 工具作为编程助手。",
+            "en": "Before submitting AI-generated code, I consider the possible risks and my responsibility for errors.",
+            "zh": "提交 AI 生成代码前，我会考虑潜在风险以及自己对错误的责任。",
         },
     },
 ]
@@ -1416,13 +1348,13 @@ def localized_task(task_id: int, lang: str = "en", version: str = "python") -> d
 
 def posttest_schema(lang: str = "en") -> dict:
     language = "zh" if lang == "zh" else "en"
-    labels = LIKERT_LABELS_ZH if language == "zh" else LIKERT_VALUES
+    labels = LIKERT_LABELS_ZH if language == "zh" else LIKERT_LABELS_EN
     return {
-        "title": "后测问卷" if language == "zh" else "Post-task Questionnaire",
+        "title": "AI 编程智能体监督能力后测" if language == "zh" else "AI Agent Supervision Competence Post-test",
         "intro": (
-            "请根据完成全部任务后的真实感受作答。A/B 两组使用同一份后测。"
+            "请根据完成全部任务后的真实感受作答。本问卷用于了解你是否形成了监督 AI 编程智能体输出的意识、策略和责任判断。后测不计入正式 task 总分。"
             if language == "zh"
-            else "Please answer based on your experience after completing all tasks. This posttest is identical for Groups A and B."
+            else "Please answer based on your experience after completing all tasks. This post-test measures your mindset, strategies, and responsibility judgments when supervising AI coding agent outputs. It is not included in the formal task score."
         ),
         "sections": [
             {"id": section["id"], "title": section["title"][language], "question_ids": section["question_ids"]}

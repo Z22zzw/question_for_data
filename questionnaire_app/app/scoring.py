@@ -4,6 +4,7 @@ from .questionnaire import (
     ANSWER_KEY,
     DELIVERABILITY_QUESTIONS,
     ERROR_IDENTIFICATION_QUESTIONS,
+    POSTTEST_FIELDS,
     REASONING_QUESTIONS,
     SUPERVISION_KEY,
 )
@@ -66,3 +67,24 @@ def score_supervision(supervision_answers: dict[str, str]) -> dict:
         "t2_supervision_card_score": t2_score,
         "supervision_card_score": t1_score + t2_score,
     }
+
+
+POSTTEST_SCORE_VALUES = {
+    "A": 1,
+    "B": 2,
+    "C": 3,
+    "D": 4,
+    "E": 5,
+    "Strongly disagree": 1,
+    "Disagree": 2,
+    "Neutral": 3,
+    "Agree": 4,
+    "Strongly agree": 5,
+}
+
+
+def score_posttest(posttest: dict[str, str]) -> dict:
+    values = [POSTTEST_SCORE_VALUES.get(posttest.get(field, "")) for field in POSTTEST_FIELDS]
+    numeric_values = [value for value in values if value is not None]
+    score = round(sum(numeric_values) / len(numeric_values), 2) if numeric_values else None
+    return {"post_agent_supervision_score": score}

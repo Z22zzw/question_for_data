@@ -311,6 +311,7 @@ const state = {
   lang: localStorage.getItem("questionnaire_lang") || "en",
   expiresAt: null,
   timeLimitSeconds: 40 * 60,
+  enabledVersions: new Set(["python", "c", "agent"]),
 };
 
 let timerInterval = null;
@@ -404,6 +405,25 @@ const pretestFields = [
 
 function pretestFieldsForVersion(version) {
   return pretestFields.filter(([name]) => version === "python" || name !== "numpy_familiarity");
+}
+
+function enabledVersionValues() {
+  return optionLabels.questionnaire_version.values.filter((value) => state.enabledVersions.has(value));
+}
+
+function configForField(name, version) {
+  const config = name === "major" ? majorOptionsByVersion[version] : optionLabels[name];
+  if (name !== "questionnaire_version") return config;
+  const enabled = enabledVersionValues();
+  const indexes = optionLabels.questionnaire_version.values
+    .map((value, index) => ({ value, index }))
+    .filter((item) => enabled.includes(item.value))
+    .map((item) => item.index);
+  return {
+    values: enabled,
+    en: indexes.map((index) => optionLabels.questionnaire_version.en[index]),
+    zh: indexes.map((index) => optionLabels.questionnaire_version.zh[index]),
+  };
 }
 
 function t(key) {
@@ -551,6 +571,15 @@ function readForm(form) {
   const data = Object.fromEntries(new FormData(form).entries());
   if (data.questionnaire_version !== "python") delete data.numpy_familiarity;
   return data;
+}
+
+async function loadQuestionnaireSettings() {
+  const settings = await api("/api/questionnaire-settings");
+  state.enabledVersions = new Set(
+    (settings.versions || [])
+      .filter((item) => item.enabled)
+      .map((item) => item.version)
+  );
 }
 
 function restoreForm(form, key) {
@@ -741,15 +770,25 @@ function renderPretest() {
   progressLabel.textContent = t("pretest");
   timerLabel.textContent = formatClock(state.timeLimitSeconds);
   timerLabel.classList.remove("warning");
+  const enabledVersions = enabledVersionValues();
+  if (!enabledVersions.length) {
+    view.innerHTML = `
+      <section class="task-block">
+        <h2>${t("unavailable")}</h2>
+        <p class="status error">All questionnaire versions are currently closed.</p>
+      </section>
+    `;
+    return;
+  }
   const draftData = readDraftData("pretest");
-  const selectedVersion = ["python", "c", "agent"].includes(draftData.questionnaire_version)
+  const selectedVersion = enabledVersions.includes(draftData.questionnaire_version)
     ? draftData.questionnaire_version
-    : "python";
+    : enabledVersions[0];
   const fields = pretestFieldsForVersion(selectedVersion)
     .map(([name, type]) => {
       const label = pretestFieldLabel(name, selectedVersion);
       if (type === "select") {
-        const config = name === "major" ? majorOptionsByVersion[selectedVersion] : optionLabels[name];
+        const config = configForField(name, selectedVersion);
         return `<label class="field"><span>${label}</span><select name="${name}" required><option value="">${t("select")}</option>${config.values
           .map((value, index) => `<option value="${escapeHtml(value)}">${escapeHtml(config[state.lang][index])}</option>`)
           .join("")}</select></label>`;
@@ -774,7 +813,11 @@ function renderPretest() {
   `;
 
   const form = document.getElementById("pretestForm");
+  form.elements.questionnaire_version.value = selectedVersion;
   bindDraft(form, "pretest");
+  if (!enabledVersions.includes(form.elements.questionnaire_version.value)) {
+    form.elements.questionnaire_version.value = selectedVersion;
+  }
   form.elements.questionnaire_version?.addEventListener("change", () => {
     localStorage.setItem(draftKey("pretest"), JSON.stringify(readForm(form)));
     renderPretest();
@@ -1099,6 +1142,21 @@ function applyCurrentSession(current) {
   } else if (current.status === "timeout") {
     clearQuestionnaireLocalState();
     renderTimeoutNotice();
+  } else if (current.status === "closed") {
+    stopTimer();
+    clearQuestionnaireLocalState();
+    setOverallProgress("none");
+    progressLabel.textContent = t("unavailable");
+    view.innerHTML = `
+      <section class="task-block">
+        <h2>${t("unavailable")}</h2>
+        <p class="status error">This questionnaire version is currently closed.</p>
+        <div class="actions">
+          <button class="primary" id="restartBtn" type="button">${t("restart")}</button>
+        </div>
+      </section>
+    `;
+    document.getElementById("restartBtn").onclick = resetToHome;
   } else {
     renderPretest();
   }
@@ -1106,6 +1164,11 @@ function applyCurrentSession(current) {
 
 async function bootstrapSession() {
   setLanguage(state.lang);
+  try {
+    await loadQuestionnaireSettings();
+  } catch {
+    state.enabledVersions = new Set(["python", "c", "agent"]);
+  }
   await retryPending();
   try {
     const current = await api("/api/session/current");

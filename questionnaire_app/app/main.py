@@ -20,7 +20,8 @@ from .questionnaire import (
     posttest_schema,
     task_question_ids,
 )
-from .scoring import check_response_pattern, check_timing, score_answers, score_supervision
+from .scoring import check_response_pattern, check_timing, score_answers, score_posttest, score_supervision
+from .settings import QuestionnaireSettings
 
 SESSION_COOKIE_NAME = "questionnaire_session"
 VERSION_COOKIE_NAME = "questionnaire_version"
@@ -51,21 +52,14 @@ class TaskPayload(BaseModel):
 
 
 class PosttestPayload(BaseModel):
-    post_attitude_useful: str
-    post_attitude_confident: str
-    post_attitude_learning_value: str
-    post_attitude_cognitive_load: str
-    post_attitude_future_use: str
-    post_strategy_requirements_first: str
-    post_strategy_trace_code: str
-    post_strategy_predict_output: str
-    post_strategy_test_cases: str
-    post_strategy_delivery_risk: str
-    post_trust_ai_correctness: str
-    post_trust_ai_boundary_cases: str
-    post_trust_ai_direct_submit: str
-    post_trust_ai_with_review: str
-    post_trust_ai_overall: str
+    post_supervisor_role: str
+    post_requirements_first: str
+    post_missing_conditions: str
+    post_code_logic_tracing: str
+    post_output_prediction: str
+    post_test_design: str
+    post_human_intervention: str
+    post_responsible_submission: str
 
 
 def create_app(db_path: Path | None = None, admin_password: str | None = None) -> FastAPI:
@@ -86,6 +80,12 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         "c": Database(c_db_path),
         "agent": Database(agent_db_path),
     }
+    settings_path = (
+        db_path.with_name(f"{db_path.stem}_settings.json")
+        if db_path
+        else base_dir / "data" / "questionnaire_settings.json"
+    )
+    questionnaire_settings = QuestionnaireSettings(settings_path)
     password = admin_password or os.getenv("ADMIN_PASSWORD", "admin123")
     app = FastAPI(title="AI Supervision A/B Questionnaire")
 
@@ -97,6 +97,10 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
 
     def db_for_version(version: str | None) -> Database:
         return dbs[normalize_version_or_400(version)]
+
+    def require_enabled_version(version: str) -> None:
+        if not questionnaire_settings.is_enabled(version):
+            raise HTTPException(status_code=403, detail="This questionnaire version is currently closed")
 
     def request_version(request: Request) -> str:
         return normalize_questionnaire_version(request.cookies.get(VERSION_COOKIE_NAME))
@@ -132,6 +136,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         if not session_id:
             raise HTTPException(status_code=401, detail="No active session")
         version = request_version(request)
+        require_enabled_version(version)
         db = dbs[version]
         session = db.get_session(session_id)
         if not session or session["abandoned_at"]:
@@ -216,6 +221,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
             supervision.update(decode_json(task_response["supervision_json"]))
         formal = score_answers(answers)
         supervision_scores = score_supervision(supervision)
+        posttest_scores = score_posttest(decode_json(row["session"]["posttest_json"]))
         posttest_ready = row["session"]["current_task"] > 6 and not row["session"]["posttest_submitted_at"]
         notice_ready = row["session"]["current_task"] == 0 and has_submitted_pretest(session_dict)
         pretest_ready = row["session"]["current_task"] == 0 and not notice_ready
@@ -264,6 +270,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
             "next_stage": next_stage,
             "scores": {key: value for key, value in formal.items() if key != "per_question"},
             "supervision_scores": {key: value for key, value in supervision_scores.items() if key != "per_item"},
+            "posttest_scores": posttest_scores,
             "quality_flags": quality_flags,
             "valid": len(quality_flags) == 0,
             **timing_metadata(session_dict),
@@ -297,6 +304,10 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         if session["current_task"] > 6:
             return {"completion_bucket": "incomplete", "incomplete_reason": "pending_posttest"}
         return {"completion_bucket": "incomplete", "incomplete_reason": "in_progress"}
+
+    @app.get("/api/questionnaire-settings")
+    def public_questionnaire_settings() -> dict[str, Any]:
+        return questionnaire_settings.as_payload()
 
     def read_task_for_session(session_id: str, task_id: int, lang: str, db: Database, version: str) -> dict[str, Any]:
         session = db.get_session(session_id)
@@ -365,6 +376,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         if not session_id:
             raise HTTPException(status_code=401, detail="Pretest is required before research notice agreement")
         version = request_version(request)
+        require_enabled_version(version)
         db = dbs[version]
         session = db.get_session(session_id)
         if not session or session["abandoned_at"]:
@@ -392,6 +404,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         session_id = cookie_session_id(request)
         pretest = payload.model_dump()
         version = normalize_version_or_400(pretest.get("questionnaire_version"))
+        require_enabled_version(version)
         pretest["questionnaire_version"] = version
         db = dbs[version]
         if version != "python":
@@ -443,6 +456,9 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         session_id = cookie_session_id(request)
         if not session_id:
             return {"status": "none"}
+        version = request_version(request)
+        if not questionnaire_settings.is_enabled(version):
+            return {"status": "closed", "next_stage": None, "next_task": None}
         db = request_db(request)
         session = db.get_session(session_id)
         if not session or session["abandoned_at"]:
@@ -471,11 +487,13 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
     @app.get("/api/task/{session_id}/{task_id}")
     def read_task(session_id: str, task_id: int, lang: str = "en", version: str = "python") -> dict[str, Any]:
         normalized = normalize_version_or_400(version)
+        require_enabled_version(normalized)
         return read_task_for_session(session_id, task_id, lang, dbs[normalized], normalized)
 
     @app.post("/api/task/{session_id}/{task_id}")
     def submit_task(session_id: str, task_id: int, payload: TaskPayload, version: str = "python") -> dict[str, Any]:
         normalized = normalize_version_or_400(version)
+        require_enabled_version(normalized)
         return submit_task_for_session(session_id, task_id, payload, dbs[normalized], normalized)
 
     @app.get("/api/posttest")
@@ -490,15 +508,21 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
 
     @app.get("/api/posttest/{session_id}")
     def read_posttest(session_id: str, lang: str = "en", version: str = "python") -> dict[str, Any]:
-        return read_posttest_for_session(session_id, lang, db_for_version(version))
+        normalized = normalize_version_or_400(version)
+        require_enabled_version(normalized)
+        return read_posttest_for_session(session_id, lang, dbs[normalized])
 
     @app.post("/api/posttest/{session_id}")
     def submit_posttest(session_id: str, payload: PosttestPayload, version: str = "python") -> dict[str, Any]:
-        return submit_posttest_for_session(session_id, payload, db_for_version(version))
+        normalized = normalize_version_or_400(version)
+        require_enabled_version(normalized)
+        return submit_posttest_for_session(session_id, payload, dbs[normalized])
 
     @app.get("/api/session/{session_id}/summary")
     def session_summary(session_id: str, version: str = "python") -> dict[str, Any]:
-        result = summarize_session(session_id, db_for_version(version))
+        normalized = normalize_version_or_400(version)
+        require_enabled_version(normalized)
+        result = summarize_session(session_id, dbs[normalized])
         if result["status"] == "none":
             raise HTTPException(status_code=404, detail="Session not found")
         return result
@@ -506,6 +530,20 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
     def require_admin(password: str) -> None:
         if password != password_value:
             raise HTTPException(status_code=401, detail="Invalid password")
+
+    @app.get("/api/admin/questionnaire-settings")
+    def admin_questionnaire_settings(password: str) -> dict[str, Any]:
+        require_admin(password)
+        return questionnaire_settings.as_payload()
+
+    @app.put("/api/admin/questionnaire-settings")
+    def admin_update_questionnaire_settings(password: str, body: dict[str, Any]) -> dict[str, Any]:
+        require_admin(password)
+        enabled_versions = body.get("enabled_versions")
+        if not isinstance(enabled_versions, dict):
+            raise HTTPException(status_code=400, detail="enabled_versions must be an object")
+        questionnaire_settings.write(enabled_versions)
+        return questionnaire_settings.as_payload()
 
     @app.get("/api/admin/export")
     def export(password: str, version: str = "python") -> Response:
@@ -542,6 +580,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
             for r in row["responses"]:
                 answers.update(decode_json(r["answers_json"]))
             scores = score_answers(answers)
+            posttest_scores = score_posttest(decode_json(s["posttest_json"]))
             flags = quality_flags_for_row(row)
             completion = completion_metadata(s, flags)
             result.append({
@@ -555,6 +594,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
                 "completed_at": s["completed_at"],
                 "abandoned_at": s["abandoned_at"],
                 "total_score": scores["total_score"],
+                "post_agent_supervision_score": posttest_scores["post_agent_supervision_score"],
                 "valid": len(flags) == 0,
                 "quality_flags": flags,
                 "total_duration_hms": seconds_to_hms(elapsed_seconds_for_session(s)),
@@ -581,6 +621,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
             supervision.update(decode_json(r["supervision_json"]))
         scores = score_answers(answers)
         sup_scores = score_supervision(supervision)
+        posttest_scores = score_posttest(posttest)
         session = dict(s)
         session["total_duration_hms"] = seconds_to_hms(elapsed_seconds_for_session(session))
         return {
@@ -592,6 +633,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
             "supervision": supervision,
             "scores": {k: v for k, v in scores.items() if k != "per_question"},
             "supervision_scores": {k: v for k, v in sup_scores.items() if k != "per_item"},
+            "posttest_scores": posttest_scores,
             "responses": row["responses"],
         }
 
