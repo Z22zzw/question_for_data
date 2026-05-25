@@ -354,7 +354,8 @@ def test_scoring_and_excel_export(tmp_path: Path):
     assert posttest_schema["title"] == "AI Supervision Competence Post-test"
     assert len(posttest_schema["questions"]) == 8
     assert posttest_schema["questions"][0]["id"] == "post_supervisor_role"
-    assert posttest_schema["questions"][0]["options"][0]["value"] == "A"
+    assert posttest_schema["questions"][0]["options"][0] == {"value": "E", "label": "Strongly agree"}
+    assert posttest_schema["questions"][0]["options"][-1] == {"value": "A", "label": "Strongly disagree"}
 
     posttest_response = client.post("/api/posttest", json=posttest_payload())
     assert posttest_response.status_code == 200

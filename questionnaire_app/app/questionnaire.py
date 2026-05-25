@@ -81,6 +81,7 @@ SUPERVISION_KEY = {
 LIKERT_VALUES = ["A", "B", "C", "D", "E"]
 LIKERT_LABELS_EN = ["Strongly disagree", "Disagree", "Neutral", "Agree", "Strongly agree"]
 LIKERT_LABELS_ZH = ["非常不同意", "不同意", "一般", "同意", "非常同意"]
+POSTTEST_OPTION_ORDER = ["E", "D", "C", "B", "A"]
 
 POSTTEST_SECTIONS = [
     {
@@ -1349,6 +1350,7 @@ def localized_task(task_id: int, lang: str = "en", version: str = "python") -> d
 def posttest_schema(lang: str = "en") -> dict:
     language = "zh" if lang == "zh" else "en"
     labels = LIKERT_LABELS_ZH if language == "zh" else LIKERT_LABELS_EN
+    label_by_value = dict(zip(LIKERT_VALUES, labels))
     return {
         "title": "AI 监督能力后测" if language == "zh" else "AI Supervision Competence Post-test",
         "intro": (
@@ -1365,7 +1367,7 @@ def posttest_schema(lang: str = "en") -> dict:
                 "id": question["id"],
                 "section": question["section"],
                 "prompt": question["prompt"][language],
-                "options": [{"value": value, "label": labels[index]} for index, value in enumerate(LIKERT_VALUES)],
+                "options": [{"value": value, "label": label_by_value[value]} for value in POSTTEST_OPTION_ORDER],
             }
             for question in POSTTEST_QUESTIONS
         ],
