@@ -85,7 +85,7 @@ LIKERT_LABELS_ZH = ["非常不同意", "不同意", "一般", "同意", "非常�
 POSTTEST_SECTIONS = [
     {
         "id": "mindset",
-        "title": {"en": "AI Agent Supervision Mindset", "zh": "AI 编程智能体监督意识"},
+        "title": {"en": "AI Supervision Mindset", "zh": "AI 监督意识"},
         "question_ids": [
             "post_supervisor_role",
             "post_requirements_first",
@@ -110,8 +110,8 @@ POSTTEST_QUESTIONS = [
         "id": "post_supervisor_role",
         "section": "mindset",
         "prompt": {
-            "en": "When working with AI coding agents, I see my role as supervising their output rather than simply accepting it.",
-            "zh": "使用 AI 编程智能体时，我认为自己的角色是监督其输出，而不是简单接受其答案。",
+            "en": "When working with AI-generated code, I see my role as supervising AI output rather than simply accepting it.",
+            "zh": "使用 AI 生成代码时，我认为自己的角色是监督 AI 输出，而不是简单接受其答案。",
         },
     },
     {
@@ -1350,11 +1350,11 @@ def posttest_schema(lang: str = "en") -> dict:
     language = "zh" if lang == "zh" else "en"
     labels = LIKERT_LABELS_ZH if language == "zh" else LIKERT_LABELS_EN
     return {
-        "title": "AI 编程智能体监督能力后测" if language == "zh" else "AI Agent Supervision Competence Post-test",
+        "title": "AI 监督能力后测" if language == "zh" else "AI Supervision Competence Post-test",
         "intro": (
-            "请根据完成全部任务后的真实感受作答。本问卷用于了解你是否形成了监督 AI 编程智能体输出的意识、策略和责任判断。后测不计入正式 task 总分。"
+            "请根据完成全部任务后的真实感受作答。本问卷用于了解你是否形成了监督 AI 输出的意识、策略和责任判断。后测不计入正式 task 总分。"
             if language == "zh"
-            else "Please answer based on your experience after completing all tasks. This post-test measures your mindset, strategies, and responsibility judgments when supervising AI coding agent outputs. It is not included in the formal task score."
+            else "Please answer based on your experience after completing all tasks. This post-test measures your mindset, strategies, and responsibility judgments when supervising AI outputs. It is not included in the formal task score."
         ),
         "sections": [
             {"id": section["id"], "title": section["title"][language], "question_ids": section["question_ids"]}

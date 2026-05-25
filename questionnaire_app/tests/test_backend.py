@@ -351,7 +351,7 @@ def test_scoring_and_excel_export(tmp_path: Path):
     assert summary_before_posttest["next_stage"] == "posttest"
 
     posttest_schema = client.get("/api/posttest?lang=en").json()
-    assert posttest_schema["title"] == "AI Agent Supervision Competence Post-test"
+    assert posttest_schema["title"] == "AI Supervision Competence Post-test"
     assert len(posttest_schema["questions"]) == 8
     assert posttest_schema["questions"][0]["id"] == "post_supervisor_role"
     assert posttest_schema["questions"][0]["options"][0]["value"] == "A"
@@ -585,7 +585,7 @@ def test_posttest_is_same_for_a_and_b_and_available_after_tasks(tmp_path: Path):
             assert response.status_code == 200
         schema = client.get("/api/posttest?lang=zh").json()
         posttest_titles.append(schema["title"])
-        assert "监督意识" in schema["sections"][0]["title"]
+        assert schema["sections"][0]["title"] == "AI 监督意识"
         assert len(schema["questions"]) == 8
 
     assert posttest_titles[0] == posttest_titles[1]
