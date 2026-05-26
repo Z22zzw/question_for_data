@@ -43,7 +43,7 @@ const i18n = {
       },
       {
         title: "Data and Rules",
-        body: "The study records responses, progress, group assignment, submission time, and response duration for academic research and statistical analysis only. Please answer independently without AI tools, search engines, coding assistants, or help from others.",
+        body: "The study records responses, progress, group assignment, submission time, and response duration for academic research and statistical analysis only. Please answer independently without AI coding agent tools, search engines, coding assistants, or help from others.",
       },
       {
         title: "If you are no longer interested",
@@ -52,7 +52,7 @@ const i18n = {
     ],
     noticeRules: [
       "This questionnaire includes a pretest, formal tasks, and a posttest. The total formal response time is limited to 40 minutes. Timing starts after you click “Agree and Start”; page refreshes, closing the page, disconnections, and re-entry all count toward the total time.",
-      "Please complete the questionnaire independently. Do not use AI tools, search engines, coding assistants, or help from others to gain answer-related assistance.",
+      "Please complete the questionnaire independently. Do not use AI coding agent tools, search engines, coding assistants, or help from others to gain answer-related assistance.",
       "This questionnaire collects response data, progress, group assignment, submission time, and response duration. The data is used only for academic research and statistical analysis, and will not be used for commercial purposes or personal identification.",
       "If the response time exceeds 40 minutes, the system will automatically stop this attempt. The data from this attempt will not be included as a valid sample. You may return to the home page and restart.",
     ],
@@ -113,8 +113,8 @@ const i18n = {
       python_familiarity: "Python Proficiency",
       file_io_familiarity: "Academic Reading/Writing Ability",
       numpy_familiarity: "NumPy Proficiency",
-      ai_tool_use_frequency: "AI Tool Use Frequency",
-      ai_code_review_experience: "AI Code Review Experience",
+      ai_tool_use_frequency: "AI Coding Agent Tool Use Frequency",
+      ai_code_review_experience: "AI Coding Agent Output Review Experience",
     },
   },
   zh: {
@@ -153,7 +153,7 @@ const i18n = {
       },
       {
         title: "数据与规则",
-        body: "系统会记录你的答案、进度、分组、提交时间和用时，仅用于学术研究和统计分析。请独立完成，不使用人工智能(AI)工具、搜索引擎、代码助手或他人帮助。",
+        body: "系统会记录你的答案、进度、分组、提交时间和用时，仅用于学术研究和统计分析。请独立完成，不使用人工智能编程智能体(AI coding agent)工具、搜索引擎、代码助手或他人帮助。",
       },
       {
         title: "如果你不想继续参加",
@@ -162,7 +162,7 @@ const i18n = {
     ],
     noticeRules: [
       "本问卷包含开始前的小问卷、正式任务和结束后的小问卷。正式任务总时长为 40 分钟。点击“同意并开始作答”后开始计时，刷新、关闭页面、断网或重新进入都会继续计入时间。",
-      "请独立完成作答。不要使用人工智能(AI)工具、搜索引擎、代码助手或他人帮助来寻找答案。",
+      "请独立完成作答。不要使用人工智能编程智能体(AI coding agent)工具、搜索引擎、代码助手或他人帮助来寻找答案。",
       "系统会收集你的答案、进度、分组、提交时间和作答用时。这些数据只用于学术研究和统计分析，不用于商业用途，也不会用来识别你的个人身份。",
       "如果正式任务超过 40 分钟，系统会自动结束本次作答，本次数据不会作为有效样本。你可以回到首页重新开始。",
     ],
@@ -223,8 +223,8 @@ const i18n = {
       python_familiarity: "Python 掌握程度",
       file_io_familiarity: "阅读和写作学术资料的经验",
       numpy_familiarity: "NumPy 掌握程度",
-      ai_tool_use_frequency: "人工智能(AI)工具使用频率",
-      ai_code_review_experience: "人工智能(AI)代码审查经验",
+      ai_tool_use_frequency: "人工智能编程智能体(AI coding agent)工具使用频率",
+      ai_code_review_experience: "人工智能编程智能体(AI coding agent)输出审查经验",
     },
   },
 };
