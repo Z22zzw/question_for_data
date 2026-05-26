@@ -112,7 +112,7 @@ POSTTEST_QUESTIONS = [
         "section": "mindset",
         "prompt": {
             "en": "When working with AI-generated code, I see my role as supervising AI output rather than simply accepting it.",
-            "zh": "看到人工智能(AI)或智能体(agent)生成的代码(code)时，我认为自己应该负责检查它，而不是直接接受。",
+            "zh": "看到人工智能编程智能体(AI coding agent)生成的代码(code)时，我认为自己是人工监督者(human supervisor)，应该负责检查它，而不是直接接受。",
         },
     },
     {
@@ -120,7 +120,7 @@ POSTTEST_QUESTIONS = [
         "section": "mindset",
         "prompt": {
             "en": "When evaluating AI-generated code, I first check whether it follows all task requirements.",
-            "zh": "检查人工智能(AI)生成的代码(code)时，我会先核对它有没有满足所有任务要求。",
+            "zh": "检查人工智能编程智能体(AI coding agent)的输出时，我会先核对它有没有满足所有任务要求。",
         },
     },
     {
@@ -128,7 +128,7 @@ POSTTEST_QUESTIONS = [
         "section": "mindset",
         "prompt": {
             "en": "I pay attention to whether the AI has missed important conditions, constraints, or edge cases in the task.",
-            "zh": "我会留意人工智能(AI)是否漏掉了题目中的重要条件、限制或特殊情况。",
+            "zh": "我会留意人工智能编程智能体(AI coding agent)是否漏掉了题目中的重要条件、限制或特殊情况。",
         },
     },
     {
@@ -136,7 +136,7 @@ POSTTEST_QUESTIONS = [
         "section": "mindset",
         "prompt": {
             "en": "I trace the actual logic of AI-generated code rather than only judging whether it looks reasonable.",
-            "zh": "我会顺着人工智能(AI)生成代码(code)的实际步骤去判断，而不只看它表面上像不像对的。",
+            "zh": "我会顺着人工智能编程智能体(AI coding agent)生成代码(code)的实际步骤去判断，而不只看它表面上像不像对的。",
         },
     },
     {
@@ -152,7 +152,7 @@ POSTTEST_QUESTIONS = [
         "section": "mindset",
         "prompt": {
             "en": "I design test cases or counterexamples to check whether AI-generated code is correct.",
-            "zh": "我会设计测试用例(test case)或反例，检查人工智能(AI)生成的代码(code)是否真的正确。",
+            "zh": "我会设计测试用例(test case)或反例，检查人工智能编程智能体(AI coding agent)生成的代码(code)是否真的正确。",
         },
     },
     {
@@ -160,7 +160,7 @@ POSTTEST_QUESTIONS = [
         "section": "responsibility",
         "prompt": {
             "en": "I can judge when AI-generated code needs human correction or intervention.",
-            "zh": "我能判断什么时候需要人工修改或介入人工智能(AI)生成的代码(code)。",
+            "zh": "我能判断什么时候需要人工修改或介入人工智能编程智能体(AI coding agent)生成的代码(code)。",
         },
     },
     {
@@ -168,7 +168,7 @@ POSTTEST_QUESTIONS = [
         "section": "responsibility",
         "prompt": {
             "en": "Before submitting AI-generated code, I consider the possible risks and my responsibility for errors.",
-            "zh": "提交人工智能(AI)生成的代码(code)前，我会考虑可能的风险，以及自己需要承担的检查责任。",
+            "zh": "交付人工智能编程智能体(AI coding agent)生成的代码(code)前，我会考虑可能的风险，以及自己作为人工监督者(human supervisor)需要承担的检查责任。",
         },
     },
 ]
@@ -1001,19 +1001,19 @@ ZH_TASK_TEXT = {
             "返回最终金额，保留两位小数。",
         ],
         "questions": {
-            "Q1": "这份人工智能(AI)给出的代码(code)是否完全满足任务要求？",
-            "Q2": "这份人工智能(AI)给出的代码(code)是否可以直接交付？",
-            "Q3": "这段代码(code)实际会返回什么？",
+            "Q1": "这份人工智能编程智能体(AI coding agent)生成的代码(code)是否完全满足任务要求？",
+            "Q2": "作为人工监督者(human supervisor)，你认为这份智能体(agent)输出是否可以直接交付？",
+            "Q3": "该智能体(agent)生成的代码(code)实际会返回什么？",
             "Q4": "根据任务要求，上述输入的正确返回值应该是什么？",
-            "Q5": "这份人工智能(AI)答案最主要的问题是什么？",
+            "Q5": "这份智能体(agent)输出最主要的隐藏错误是什么？",
         },
         "contexts": {"Q3": '给定 price_table={"A":10,"B":50}, items={"A":2,"X":1}, vip=False。'},
         "supervision": {
             "T1_SC_problem_definition": '任务是否要求未知商品 ID 返回 "Unknown item"？',
             "T1_SC_code_understanding": "price_table.get(pid, 0) 是否会把未知商品价格当作 0？",
-            "T1_SC_output_debugging": '对 items={"A":2,"X":1}，未知商品 X 是否会被人工智能(AI)代码(code)悄悄忽略？',
+            "T1_SC_output_debugging": '对 items={"A":2,"X":1}，未知商品 X 是否会被该智能体(agent)生成的代码(code)悄悄忽略？',
             "T1_SC_verification_testing": "哪个输入最能暴露未知商品问题？",
-            "T1_SC_responsibility": "如果未知商品被当作 0 元处理，这份代码(code)是否可直接交付？",
+            "T1_SC_responsibility": "如果未知商品被当作 0 元处理，这份智能体(agent)输出是否可直接交付？",
         },
     },
     2: {
@@ -1028,11 +1028,11 @@ ZH_TASK_TEXT = {
             "输出文件应按 tag 字母顺序排序，并覆盖旧内容。",
         ],
         "questions": {
-            "Q6": "这份人工智能(AI)给出的代码(code)是否完全满足任务要求？",
-            "Q7": "这份人工智能(AI)给出的代码(code)是否可以直接交付？",
-            "Q8": "这段代码(code)最可能发生什么？",
+            "Q6": "这份人工智能编程智能体(AI coding agent)生成的代码(code)是否完全满足任务要求？",
+            "Q7": "作为人工监督者(human supervisor)，你认为这份智能体(agent)输出是否可以直接交付？",
+            "Q8": "该智能体(agent)生成的代码(code)最可能发生什么？",
             "Q9": "根据任务要求，上述输入的正确返回字典(dictionary)应该是什么？",
-            "Q10": "这份人工智能(AI)答案的问题包括哪一组？",
+            "Q10": "这份智能体(agent)输出的问题包括哪一组？",
         },
         "contexts": {"Q8": "输入文件内容为：u1,python，然后一个空行，然后 u2,ai。"},
         "supervision": {
@@ -1040,7 +1040,7 @@ ZH_TASK_TEXT = {
             "T2_SC_code_understanding": 'if line == "" 能否跳过文件中的空行 "\\n"？',
             "T2_SC_output_debugging": '遇到空行时，user, tag = line.split(",") 是否可能报错？',
             "T2_SC_verification_testing": "哪个输入最能测试空行处理？",
-            "T2_SC_responsibility": "如果代码(code)可能把旧输出保留在文件中，这份代码(code)是否可直接交付？",
+            "T2_SC_responsibility": "如果代码(code)可能把旧输出保留在文件中，这份智能体(agent)输出是否可直接交付？",
         },
     },
     3: {
@@ -1052,11 +1052,11 @@ ZH_TASK_TEXT = {
             "返回按 student_id 从小到大排列的字典(dictionary)列表。",
         ],
         "questions": {
-            "Q11": "这份人工智能(AI)给出的代码(code)是否完全满足任务要求？",
-            "Q12": "这份人工智能(AI)给出的代码(code)是否可以直接交付？",
-            "Q13": "这段代码(code)会返回什么？",
+            "Q11": "这份人工智能编程智能体(AI coding agent)生成的代码(code)是否完全满足任务要求？",
+            "Q12": "作为人工监督者(human supervisor)，你认为这份智能体(agent)输出是否可以直接交付？",
+            "Q13": "该智能体(agent)生成的代码(code)会返回什么？",
             "Q14": "根据任务要求，上述输入的正确返回值应该是什么？",
-            "Q15": "这份人工智能(AI)答案最主要的问题是什么？",
+            "Q15": "这份智能体(agent)输出最主要的隐藏错误是什么？",
         },
         "contexts": {"Q13": '档案文件：s2,Bob 然后 s1,Ana。scores={"s1":90}。'},
     },
@@ -1069,11 +1069,11 @@ ZH_TASK_TEXT = {
             "返回结果保留两位小数。",
         ],
         "questions": {
-            "Q16": "这份人工智能(AI)给出的代码(code)是否完全满足任务要求？",
-            "Q17": "这份人工智能(AI)给出的代码(code)是否可以直接交付？",
-            "Q18": "这段代码(code)最可能返回什么？",
+            "Q16": "这份人工智能编程智能体(AI coding agent)生成的代码(code)是否完全满足任务要求？",
+            "Q17": "作为人工监督者(human supervisor)，你认为这份智能体(agent)输出是否可以直接交付？",
+            "Q18": "该智能体(agent)生成的代码(code)最可能返回什么？",
             "Q19": "根据任务要求，上述输入的正确返回值应该是什么？",
-            "Q20": "这份人工智能(AI)答案最主要的问题是什么？",
+            "Q20": "这份智能体(agent)输出最主要的隐藏错误是什么？",
         },
         "contexts": {"Q18": "arr = np.array([1.0, 2.0, np.nan])"},
     },
@@ -1085,11 +1085,11 @@ ZH_TASK_TEXT = {
             "每个类别金额保留两位小数。",
         ],
         "questions": {
-            "Q21": "这份人工智能(AI)给出的代码(code)是否完全满足任务要求？",
-            "Q22": "这份人工智能(AI)给出的代码(code)是否可以直接交付？",
-            "Q23": "这段代码(code)会返回什么？",
+            "Q21": "这份人工智能编程智能体(AI coding agent)生成的代码(code)是否完全满足任务要求？",
+            "Q22": "作为人工监督者(human supervisor)，你认为这份智能体(agent)输出是否可以直接交付？",
+            "Q23": "该智能体(agent)生成的代码(code)会返回什么？",
             "Q24": "根据任务要求，上述输入的正确返回值应该是什么？",
-            "Q25": "这份人工智能(AI)答案最主要的问题是什么？",
+            "Q25": "这份智能体(agent)输出最主要的隐藏错误是什么？",
         },
         "contexts": {"Q23": 'prices=[10,20,5], quantities=[2,1,4], categories={0:"A",1:"B",2:"A"}。'},
     },
@@ -1102,11 +1102,11 @@ ZH_TASK_TEXT = {
             "按类别汇总销售额并保留两位小数。",
         ],
         "questions": {
-            "Q26": "这份人工智能(AI)给出的代码(code)是否完全满足任务要求？",
-            "Q27": "这份人工智能(AI)给出的代码(code)是否可以直接交付？",
-            "Q28": "这段代码(code)会返回什么？",
+            "Q26": "这份人工智能编程智能体(AI coding agent)生成的代码(code)是否完全满足任务要求？",
+            "Q27": "作为人工监督者(human supervisor)，你认为这份智能体(agent)输出是否可以直接交付？",
+            "Q28": "该智能体(agent)生成的代码(code)会返回什么？",
             "Q29": "根据任务要求，上述输入的正确返回值应该是什么？",
-            "Q30": "这份人工智能(AI)答案的问题包括哪一组？",
+            "Q30": "这份智能体(agent)输出的问题包括哪一组？",
         },
         "contexts": {"Q28": '输入行：2024-01,P1,2,10 和 2024-01,P2,3,5。category_map={"P1":"book","P2":"food"}。'},
     },
@@ -1124,11 +1124,11 @@ C_ZH_TASK_TEXT = {
             "返回最终金额。",
         ],
         "questions": {
-            "Q1": "这份人工智能(AI)生成的 C 语言代码(code)是否完全满足任务要求？",
-            "Q2": "这份人工智能(AI)生成的 C 语言代码(code)是否可以直接交付？",
-            "Q3": "这段代码(code)会返回什么？",
+            "Q1": "这份人工智能编程智能体(AI coding agent)生成的 C 语言代码(code)是否完全满足任务要求？",
+            "Q2": "作为人工监督者(human supervisor)，你认为这份智能体(agent)输出是否可以直接交付？",
+            "Q3": "该智能体(agent)生成的代码(code)会返回什么？",
             "Q4": "根据任务要求，正确返回值应该是什么？",
-            "Q5": "这份人工智能(AI)答案的主要问题是什么？",
+            "Q5": "这份智能体(agent)输出的主要隐藏错误是什么？",
         },
         "contexts": {"Q3": "给定 ids={1,9}, qty={2,1}, price_ids={1,2}, prices={10,50}, vip=0。"},
         "supervision": {
@@ -1136,7 +1136,7 @@ C_ZH_TASK_TEXT = {
             "T1_SC_code_understanding": "把 price 初始化为 0，是否会让未知商品按 0 元计入小计？",
             "T1_SC_output_debugging": "对于 ids={1,9}，编号 9 是否会被静默按 0 元处理？",
             "T1_SC_verification_testing": "哪个输入最能暴露未知编号问题？",
-            "T1_SC_responsibility": "如果未知编号被按 0 元收费，这段代码(code)是否可以直接交付？",
+            "T1_SC_responsibility": "如果未知编号被按 0 元收费，这份智能体(agent)输出是否可以直接交付？",
         },
     },
     2: {
@@ -1149,9 +1149,9 @@ C_ZH_TASK_TEXT = {
             "把计数写入 output_path，并覆盖旧内容。",
         ],
         "questions": {
-            "Q6": "这份人工智能(AI)生成的 C 语言代码(code)是否完全满足任务要求？",
-            "Q7": "这份人工智能(AI)生成的 C 语言代码(code)是否可以直接交付？",
-            "Q8": "这段代码(code)会返回什么？",
+            "Q6": "这份人工智能编程智能体(AI coding agent)生成的 C 语言代码(code)是否完全满足任务要求？",
+            "Q7": "作为人工监督者(human supervisor)，你认为这份智能体(agent)输出是否可以直接交付？",
+            "Q8": "该智能体(agent)生成的代码(code)会返回什么？",
             "Q9": "根据任务要求，正确返回值应该是什么？",
             "Q10": "这份答案的问题包括哪一组？",
         },
@@ -1161,16 +1161,16 @@ C_ZH_TASK_TEXT = {
             "T2_SC_code_understanding": 'strcmp(line, "") 能否跳过被读取为 "\\n" 的空行？',
             "T2_SC_output_debugging": "这段代码是否会追加到旧输出后，而不是覆盖旧内容？",
             "T2_SC_verification_testing": "哪个输入最能测试空行处理？",
-            "T2_SC_responsibility": "如果旧输出会保留在文件里，这段代码(code)是否可以直接交付？",
+            "T2_SC_responsibility": "如果旧输出会保留在文件里，这份智能体(agent)输出是否可以直接交付？",
         },
     },
     3: {
         "title": "C 任务 3：学生成绩报告",
         "requirements": ["根据学生 id，从成绩表中填充每个学生的成绩。", "如果某个学生 id 在成绩表中缺失，成绩应为 0。", "保持原始学生顺序。"],
         "questions": {
-            "Q11": "这份人工智能(AI)生成的 C 语言代码(code)是否完全满足任务要求？",
-            "Q12": "这份人工智能(AI)生成的 C 语言代码(code)是否可以直接交付？",
-            "Q13": "这段代码(code)会生成什么结果？",
+            "Q11": "这份人工智能编程智能体(AI coding agent)生成的 C 语言代码(code)是否完全满足任务要求？",
+            "Q12": "作为人工监督者(human supervisor)，你认为这份智能体(agent)输出是否可以直接交付？",
+            "Q13": "该智能体(agent)生成的代码(code)会生成什么结果？",
             "Q14": "根据任务要求，正确的成绩值应该是什么？",
             "Q15": "这份答案的主要问题是什么？",
         },
@@ -1180,9 +1180,9 @@ C_ZH_TASK_TEXT = {
         "title": "C 任务 4：排除哨兵值的数组平均值",
         "requirements": ["忽略值为 -1 的元素。", "以 double 返回有效值的平均数。", "如果没有有效值，返回 0.0。"],
         "questions": {
-            "Q16": "这份人工智能(AI)生成的 C 语言代码(code)是否完全满足任务要求？",
-            "Q17": "这份人工智能(AI)生成的 C 语言代码(code)是否可以直接交付？",
-            "Q18": "按普通 C 语言整数除法规则，这段代码(code)会返回什么？",
+            "Q16": "这份人工智能编程智能体(AI coding agent)生成的 C 语言代码(code)是否完全满足任务要求？",
+            "Q17": "作为人工监督者(human supervisor)，你认为这份智能体(agent)输出是否可以直接交付？",
+            "Q18": "按普通 C 语言整数除法规则，该智能体(agent)生成的代码(code)会返回什么？",
             "Q19": "根据任务要求，正确返回值应该是什么？",
             "Q20": "这份答案的主要问题是什么？",
         },
@@ -1192,9 +1192,9 @@ C_ZH_TASK_TEXT = {
         "title": "C 任务 5：分类销售额汇总",
         "requirements": ["销售额计算为 price * quantity。", "按分类下标汇总销售额。", "累计前应设置每个分类的初始总额。"],
         "questions": {
-            "Q21": "这份人工智能(AI)生成的 C 语言代码(code)是否完全满足任务要求？",
-            "Q22": "这份人工智能(AI)生成的 C 语言代码(code)是否可以直接交付？",
-            "Q23": "这段代码(code)会生成哪些 totals？",
+            "Q21": "这份人工智能编程智能体(AI coding agent)生成的 C 语言代码(code)是否完全满足任务要求？",
+            "Q22": "作为人工监督者(human supervisor)，你认为这份智能体(agent)输出是否可以直接交付？",
+            "Q23": "该智能体(agent)生成的代码(code)会生成哪些 totals？",
             "Q24": "根据任务要求，正确的 totals 应该是什么？",
             "Q25": "这份答案的主要问题是什么？",
         },
@@ -1204,9 +1204,9 @@ C_ZH_TASK_TEXT = {
         "title": "C 任务 6：CSV 商品汇总",
         "requirements": ["每行格式为 product_id,units,price。", "如果商品编号未知，或 units/price 为负数，返回 0。", "计算 units * price。", "按分类汇总 totals，成功时返回 1。"],
         "questions": {
-            "Q26": "这份人工智能(AI)生成的 C 语言代码(code)是否完全满足任务要求？",
-            "Q27": "这份人工智能(AI)生成的 C 语言代码(code)是否可以直接交付？",
-            "Q28": "这段代码(code)会生成哪些 totals？",
+            "Q26": "这份人工智能编程智能体(AI coding agent)生成的 C 语言代码(code)是否完全满足任务要求？",
+            "Q27": "作为人工监督者(human supervisor)，你认为这份智能体(agent)输出是否可以直接交付？",
+            "Q28": "该智能体(agent)生成的代码(code)会生成哪些 totals？",
             "Q29": "根据任务要求，正确的 totals 应该是什么？",
             "Q30": "这份答案的问题包括哪一组？",
         },
@@ -1257,7 +1257,7 @@ AGENT_ZH_TASK_TEXT = {
         ],
         "questions": {
             "Q11": "智能体(agent)的结论是否有观察结果支持？",
-            "Q12": "这个智能体(agent)交付结果是否可以直接提交？",
+            "Q12": "作为人工监督者(human supervisor)，你认为这个智能体(agent)交付结果是否可以直接交付？",
             "Q13": "运行记录显示了什么？",
             "Q14": "根据用户目标，Bob 缺失成绩时应该怎样处理？",
             "Q15": "最合适的监督决定是什么？",
@@ -1288,7 +1288,7 @@ AGENT_ZH_TASK_TEXT = {
         ],
         "questions": {
             "Q21": "智能体(agent)最后的说法是否有运行流程支持？",
-            "Q22": "这个智能体(agent)交付结果是否可以直接提交？",
+            "Q22": "作为人工监督者(human supervisor)，你认为这个智能体(agent)交付结果是否可以直接交付？",
             "Q23": "对于 prices={10,20,5}, qty={2,1,4}, cat={0,1,0}，观察到的 totals 是什么？",
             "Q24": "根据用户目标，totals 应该是什么？",
             "Q25": "最合适的监督决定是什么？",
@@ -1303,7 +1303,7 @@ AGENT_ZH_TASK_TEXT = {
         ],
         "questions": {
             "Q26": "智能体(agent)最后的结论是否完全有运行流程支持？",
-            "Q27": "这个智能体(agent)交付结果是否可以直接提交？",
+            "Q27": "作为人工监督者(human supervisor)，你认为这个智能体(agent)交付结果是否可以直接交付？",
             "Q28": "对于 1,2,10 和 2,3,5 这两行，智能体(agent)的代码(code)生成了哪些 totals？",
             "Q29": "根据用户目标，这两行的正确 totals 应该是什么？",
             "Q30": "哪一个监督判断最准确？",
@@ -1542,8 +1542,8 @@ def localized_task(task_id: int, lang: str = "en", version: str = "python") -> d
                 item["prompt"] = zh.get("supervision", {}).get(item["id"], item["prompt"])
                 item["dimension"] = {
                     "Problem Definition": "理解任务要求",
-                    "AI Code Understanding": "理解人工智能(AI)代码(code)",
-                    "AI Output Debugging": "核对人工智能(AI)输出",
+                    "AI Code Understanding": "理解智能体(agent)生成的代码(code)",
+                    "AI Output Debugging": "核对智能体(agent)输出",
                     "Verification and Testing": "验证与测试(testing)",
                     "Responsibility and Supervision": "交付责任与监督",
                 }.get(item["dimension"], item["dimension"])
@@ -1565,8 +1565,8 @@ def localized_task(task_id: int, lang: str = "en", version: str = "python") -> d
             item["prompt"] = zh.get("supervision", {}).get(item["id"], item["prompt"])
             item["dimension"] = {
                 "Problem Definition": "理解任务要求",
-                "AI Code Understanding": "理解人工智能(AI)代码(code)",
-                "AI Output Debugging": "核对人工智能(AI)输出",
+                "AI Code Understanding": "理解智能体(agent)生成的代码(code)",
+                "AI Output Debugging": "核对智能体(agent)输出",
                 "Verification and Testing": "验证与测试(testing)",
                 "Responsibility and Supervision": "交付责任与监督",
             }.get(item["dimension"], item["dimension"])
@@ -1581,7 +1581,7 @@ def posttest_schema(lang: str = "en") -> dict:
     return {
         "title": "AI 监督能力后测" if language == "zh" else "AI Supervision Competence Post-test",
         "intro": (
-            "请根据完成全部任务后的真实感受作答。这里想了解你是否形成了监督人工智能(AI)或智能体(agent)输出的意识、方法和责任判断。结束后小问卷不计入正式任务得分。"
+            "请根据完成全部任务后的真实感受作答。这里想了解你是否形成了作为人工监督者(human supervisor)监督人工智能编程智能体(AI coding agent)交付结果的意识、方法和责任判断。结束后小问卷不计入正式任务得分。"
             if language == "zh"
             else "Please answer based on your experience after completing all tasks. This post-test measures your mindset, strategies, and responsibility judgments when supervising AI outputs. It is not included in the formal task score."
         ),

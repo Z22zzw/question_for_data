@@ -114,10 +114,12 @@ def test_frontend_task_page_explains_how_to_answer_and_supervision_card_role():
     assert "taskSectionLabels" in app_js
     assert "supervisionIntro" in app_js
     assert "agentTrace" in app_js
-    assert "智能体(agent)运行流程 / Agent运行流程" in app_js
+    assert "人工智能编程智能体(AI coding agent)工作记录" in app_js
     assert 'task.questionnaire_version === "agent"' in app_js
     assert "正式问题" in app_js
-    assert "人工智能(AI)生成的代码(code)" in app_js
+    assert "人工智能编程智能体(AI coding agent)生成的代码(code)" in app_js
+    assert "回答背景" in app_js
+    assert "人工监督者(human supervisor)" in app_js
 
 
 def test_frontend_scrolls_to_first_unanswered_required_group():

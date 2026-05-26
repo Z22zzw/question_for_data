@@ -283,6 +283,7 @@ button:focus-visible,
 }
 
 .task-guide,
+.scenario-card,
 .task-block,
 .supervision {
   min-width: 0;
@@ -300,6 +301,24 @@ button:focus-visible,
 
 .task-guide h2 {
   color: var(--green);
+}
+
+.scenario-card {
+  display: grid;
+  gap: 10px;
+  background: #fff3ec;
+  border-color: #e6bea9;
+}
+
+.scenario-card h2 {
+  color: var(--accent);
+}
+
+.scenario-card p {
+  margin: 0;
+  color: var(--text);
+  font-size: 17px;
+  line-height: 1.7;
 }
 
 .task-guide ol,
