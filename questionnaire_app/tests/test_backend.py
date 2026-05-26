@@ -579,7 +579,7 @@ def test_c_task_can_be_localized_to_chinese(tmp_path: Path):
 
     assert task["title"].startswith("C 任务 1")
     assert "商品编号不存在" in task["requirements"][2]
-    assert task["questions"][0]["prompt"] == "这份人工智能编程智能体(AI coding agent)生成的代码(code)是否完全满足任务要求？"
+    assert task["questions"][0]["prompt"] == "这份人工智能编程智能体(AI coding agent)给出的代码(code)是否完全满足任务要求？"
     assert task["questions"][4]["options"][1]["text"] == "未知商品编号被按 0 元处理"
     assert task["supervision_card"][0]["dimension"] == "理解任务要求"
     assert "返回 -1" in task["supervision_card"][0]["prompt"]

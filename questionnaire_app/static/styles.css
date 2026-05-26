@@ -54,8 +54,7 @@ body::before {
 }
 
 .topbar {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 10;
   display: flex;
   align-items: end;
@@ -66,6 +65,22 @@ body::before {
   background: rgba(245, 244, 237, 0.94);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--line);
+  transition: transform 180ms ease, opacity 180ms ease, box-shadow 180ms ease;
+}
+
+.topbar.is-floating {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  width: min(1180px, calc(100% - 32px));
+  transform: translate(-50%, 0);
+  box-shadow: rgba(20, 20, 19, 0.08) 0 8px 24px;
+}
+
+.topbar.is-hidden {
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -110%);
 }
 
 .eyebrow {
@@ -528,6 +543,11 @@ button:hover {
     display: grid;
     align-items: start;
     gap: 14px;
+  }
+
+  .topbar.is-floating {
+    position: fixed;
+    width: min(100% - 20px, 1120px);
   }
 
   .modal-header {

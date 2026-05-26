@@ -5,6 +5,7 @@ const timerLabel = document.getElementById("timerLabel");
 const languageToggle = document.getElementById("languageToggle");
 const resetHomeButton = document.getElementById("resetHome");
 const networkStatus = document.getElementById("networkStatus");
+const topbar = document.querySelector(".topbar");
 
 const i18n = {
   en: {
@@ -195,7 +196,7 @@ const i18n = {
     answerBackgroundTrace: "一个人工智能编程智能体(AI coding agent)根据任务要求完成了以下工作。你作为人工监督者(human supervisor)，需要判断该智能体(agent)的操作、证据和最终输出是否满足需求、是否存在隐藏错误、是否需要进一步测试，以及是否可以交付。",
     taskSectionLabels: {
       requirements: "任务要求",
-      aiCode: "人工智能编程智能体(AI coding agent)生成的代码(code)",
+      aiCode: "人工智能编程智能体(AI coding agent)给出的代码(code)",
       agentTrace: "人工智能编程智能体(AI coding agent)工作记录",
       questions: "正式问题",
       givenInput: "给定输入",
@@ -323,6 +324,25 @@ const state = {
 let timerInterval = null;
 let activeModal = null;
 let showNotInterestedMessage = false;
+let lastScrollY = window.scrollY;
+
+function updateTopbarVisibility() {
+  if (!topbar) return;
+  const currentY = Math.max(0, window.scrollY);
+  const threshold = topbar.offsetHeight + 24;
+  const scrollingDown = currentY > lastScrollY + 4;
+  const scrollingUp = currentY < lastScrollY - 4;
+
+  if (currentY <= threshold) {
+    topbar.classList.remove("is-floating", "is-hidden");
+  } else if (scrollingDown) {
+    topbar.classList.add("is-floating", "is-hidden");
+  } else if (scrollingUp) {
+    topbar.classList.add("is-floating");
+    topbar.classList.remove("is-hidden");
+  }
+  lastScrollY = currentY;
+}
 
 function ensureModalRoot() {
   let root = document.getElementById("modalRoot");
@@ -1196,5 +1216,7 @@ window.addEventListener("online", retryPending);
 window.addEventListener("offline", () => {
   networkStatus.textContent = t("offline");
 });
+window.addEventListener("scroll", updateTopbarVisibility, { passive: true });
+window.addEventListener("resize", updateTopbarVisibility);
 
 bootstrapSession();

@@ -117,7 +117,7 @@ def test_frontend_task_page_explains_how_to_answer_and_supervision_card_role():
     assert "人工智能编程智能体(AI coding agent)工作记录" in app_js
     assert 'task.questionnaire_version === "agent"' in app_js
     assert "正式问题" in app_js
-    assert "人工智能编程智能体(AI coding agent)生成的代码(code)" in app_js
+    assert "人工智能编程智能体(AI coding agent)给出的代码(code)" in app_js
     assert "回答背景" in app_js
     assert "人工监督者(human supervisor)" in app_js
 
@@ -141,6 +141,17 @@ def test_mobile_layout_prevents_page_level_horizontal_overflow():
     assert "min-width: 0" in styles
     assert "overflow-wrap: anywhere" in styles
     assert "max-width: 100%" in styles
+
+
+def test_topbar_reveals_only_on_upward_scroll_after_leaving_view():
+    app_js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+    styles = (ROOT / "static" / "styles.css").read_text(encoding="utf-8")
+
+    assert "function updateTopbarVisibility" in app_js
+    assert 'window.addEventListener("scroll", updateTopbarVisibility' in app_js
+    assert ".topbar.is-floating" in styles
+    assert ".topbar.is-hidden" in styles
+    assert "position: sticky" not in styles
 
 
 def test_admin_page_has_completion_and_incomplete_reason_filters():
