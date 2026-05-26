@@ -557,6 +557,19 @@ def test_task_can_be_localized_to_chinese(tmp_path: Path):
     ]
 
 
+def test_task_questions_use_agent_supervisor_context_in_english(tmp_path: Path):
+    client = make_client(tmp_path)
+    submit_pretest(client)
+
+    task = client.get("/api/task/1?lang=en").json()
+
+    assert task["questions"][0]["prompt"] == "Does the AI coding agent's generated code fully satisfy the task requirements?"
+    assert task["questions"][1]["prompt"] == "As the human supervisor, can you approve this agent output for delivery?"
+    assert task["questions"][2]["prompt"] == "What will the agent-generated code return?"
+    assert "AI-generated answer" not in task["questions"][0]["prompt"]
+    assert "submitted directly" not in task["questions"][1]["prompt"]
+
+
 def test_c_task_can_be_localized_to_chinese(tmp_path: Path):
     client_a, client_b = make_two_clients(tmp_path)
     submit_pretest(client_a, "c")

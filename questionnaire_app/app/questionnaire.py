@@ -246,25 +246,25 @@ TASKS = [
             {
                 "id": "T1_SC_responsibility",
                 "dimension": "Responsibility and Supervision",
-                "prompt": "If an unknown product is treated as 0 yuan, can this code be submitted directly?",
+                "prompt": "If an unknown product is treated as 0 yuan, can the human supervisor approve this agent output for delivery?",
                 "options": ["Can submit", "Cannot submit", "Not sure"],
             },
         ],
         "questions": [
             {
                 "id": "Q1",
-                "prompt": "Does this AI-generated answer fully satisfy the task requirements?",
+                "prompt": "Does the AI coding agent's generated code fully satisfy the task requirements?",
                 "options": [choice("A", "Yes"), choice("B", "No")],
             },
             {
                 "id": "Q2",
-                "prompt": "Can this AI-generated answer be submitted directly?",
+                "prompt": "As the human supervisor, can you approve this agent output for delivery?",
                 "options": [choice("A", "Can submit"), choice("B", "Cannot submit")],
             },
             {
                 "id": "Q3",
                 "context": 'Given price_table={"A":10,"B":50}, items={"A":2,"X":1}, vip=False.',
-                "prompt": "What will the AI code return?",
+                "prompt": "What will the agent-generated code return?",
                 "options": [choice("A", '"Unknown item"'), choice("B", "28.0"), choice("C", "20.0"), choice("D", "Error")],
             },
             {
@@ -274,7 +274,7 @@ TASKS = [
             },
             {
                 "id": "Q5",
-                "prompt": "What is the main problem with this AI-generated answer?",
+                "prompt": "What hidden error should the human supervisor catch in this agent output?",
                 "options": [
                     choice("A", "The VIP discount is calculated incorrectly"),
                     choice("B", "Unknown product IDs are treated as price 0"),
@@ -338,17 +338,17 @@ TASKS = [
             {
                 "id": "T2_SC_responsibility",
                 "dimension": "Responsibility and Supervision",
-                "prompt": "If the code may keep old output in the file, can it be submitted directly?",
+                "prompt": "If the code may keep old output in the file, can the human supervisor approve this agent output for delivery?",
                 "options": ["Can submit", "Cannot submit", "Not sure"],
             },
         ],
         "questions": [
-            {"id": "Q6", "prompt": "Does this AI-generated answer fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
-            {"id": "Q7", "prompt": "Can this AI-generated answer be submitted directly?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
+            {"id": "Q6", "prompt": "Does the AI coding agent's generated code fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
+            {"id": "Q7", "prompt": "As the human supervisor, can you approve this agent output for delivery?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
             {
                 "id": "Q8",
                 "context": "Input file content: u1,python then an empty line then u2,ai.",
-                "prompt": "What is the AI code most likely to do?",
+                "prompt": "What is the agent-generated code most likely to do?",
                 "options": [
                     choice("A", 'Return {"python": 1, "ai": 1}'),
                     choice("B", 'Return {"python": 1, "": 1, "ai": 1}'),
@@ -363,7 +363,7 @@ TASKS = [
             },
             {
                 "id": "Q10",
-                "prompt": "Which group of problems does this AI-generated answer have?",
+                "prompt": "Which hidden problems should the human supervisor catch in this agent output?",
                 "options": [
                     choice("A", "Only missing encoding"),
                     choice("B", "It does not correctly skip empty lines, uses append mode, and does not sort output"),
@@ -396,11 +396,11 @@ TASKS.extend(
             result.append({"id": sid, "name": name, "score": scores.get(sid, 0)})
     return sorted(result, key=lambda x: x["id"])""",
             [
-                {"id": "Q11", "prompt": "Does this AI-generated answer fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
-                {"id": "Q12", "prompt": "Can this AI-generated answer be submitted directly?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
-                {"id": "Q13", "context": 'Profile file: s2,Bob then s1,Ana. scores={"s1":90}.', "prompt": "What will the AI code return?", "options": [choice("A", '[{"id":"s1","name":"Ana","score":90},{"id":"s2","name":"Bob","score":0}]'), choice("B", '[{"id":"s2","name":"Bob","score":0},{"id":"s1","name":"Ana","score":90}]'), choice("C", "Error"), choice("D", '{"s1":90,"s2":0}')]},
+                {"id": "Q11", "prompt": "Does the AI coding agent's generated code fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
+                {"id": "Q12", "prompt": "As the human supervisor, can you approve this agent output for delivery?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
+                {"id": "Q13", "context": 'Profile file: s2,Bob then s1,Ana. scores={"s1":90}.', "prompt": "What will the agent-generated code return?", "options": [choice("A", '[{"id":"s1","name":"Ana","score":90},{"id":"s2","name":"Bob","score":0}]'), choice("B", '[{"id":"s2","name":"Bob","score":0},{"id":"s1","name":"Ana","score":90}]'), choice("C", "Error"), choice("D", '{"s1":90,"s2":0}')]},
                 {"id": "Q14", "prompt": "According to the task requirements, what should the correct return value be?", "options": [choice("A", '[{"id":"s1","name":"Ana","score":90},{"id":"s2","name":"Bob","score":0}]'), choice("B", '[{"id":"s2","name":"Bob","score":0},{"id":"s1","name":"Ana","score":90}]'), choice("C", "Error"), choice("D", "None")]},
-                {"id": "Q15", "prompt": "What is the main problem with this AI-generated answer?", "options": [choice("A", "It does not handle empty lines"), choice("B", "It does not handle missing scores"), choice("C", "It does not sort"), choice("D", "It has no problem")]},
+                {"id": "Q15", "prompt": "What hidden error should the human supervisor catch in this agent output?", "options": [choice("A", "It does not handle empty lines"), choice("B", "It does not handle missing scores"), choice("C", "It does not sort"), choice("D", "It has no problem")]},
             ],
             [
                 "Read student_id,name rows from a profile file.",
@@ -419,11 +419,11 @@ def standardize_scores(arr):
     std = np.std(arr)
     return np.round((arr - mean) / std, 2)""",
             [
-                {"id": "Q16", "prompt": "Does this AI-generated answer fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
-                {"id": "Q17", "prompt": "Can this AI-generated answer be submitted directly?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
-                {"id": "Q18", "context": "arr = np.array([1.0, 2.0, np.nan])", "prompt": "What will the AI code most likely return?", "options": [choice("A", "array([-1.0, 1.0, nan])"), choice("B", "array([nan, nan, nan])"), choice("C", "array([0.0, 0.0, nan])"), choice("D", "Error")]},
+                {"id": "Q16", "prompt": "Does the AI coding agent's generated code fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
+                {"id": "Q17", "prompt": "As the human supervisor, can you approve this agent output for delivery?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
+                {"id": "Q18", "context": "arr = np.array([1.0, 2.0, np.nan])", "prompt": "What will the agent-generated code most likely return?", "options": [choice("A", "array([-1.0, 1.0, nan])"), choice("B", "array([nan, nan, nan])"), choice("C", "array([0.0, 0.0, nan])"), choice("D", "Error")]},
                 {"id": "Q19", "prompt": "According to the task requirements, what should the correct return value be?", "options": [choice("A", "array([-1.0, 1.0, nan])"), choice("B", "array([nan, nan, nan])"), choice("C", "array([0.0, 0.0, nan])"), choice("D", "array([1.0, 2.0, nan])")]},
-                {"id": "Q20", "prompt": "What is the main problem with this AI-generated answer?", "options": [choice("A", "It does not use NumPy"), choice("B", "It does not ignore np.nan and does not handle zero standard deviation"), choice("C", "The standardization formula is reversed"), choice("D", "It has no problem")]},
+                {"id": "Q20", "prompt": "What hidden error should the human supervisor catch in this agent output?", "options": [choice("A", "It does not use NumPy"), choice("B", "It does not ignore np.nan and does not handle zero standard deviation"), choice("C", "The standardization formula is reversed"), choice("D", "It has no problem")]},
             ],
             ["Ignore np.nan for mean and standard deviation.", "Preserve original np.nan positions.", "Handle zero standard deviation by returning 0 for valid positions.", "Round to two decimal places."],
         ),
@@ -438,11 +438,11 @@ def standardize_scores(arr):
         totals[cat] = totals.get(cat, 0) + r
     return {k: round(float(v), 2) for k, v in totals.items()}""",
             [
-                {"id": "Q21", "prompt": "Does this AI-generated answer fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
-                {"id": "Q22", "prompt": "Can this AI-generated answer be submitted directly?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
-                {"id": "Q23", "context": 'prices=[10,20,5], quantities=[2,1,4], categories={0:"A",1:"B",2:"A"}.', "prompt": "What will the AI code return?", "options": [choice("A", '{"A":40.0,"B":20.0}'), choice("B", '{"A":15.0,"B":20.0}'), choice("C", '{"A":20.0,"B":20.0}'), choice("D", "Error")]},
+                {"id": "Q21", "prompt": "Does the AI coding agent's generated code fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
+                {"id": "Q22", "prompt": "As the human supervisor, can you approve this agent output for delivery?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
+                {"id": "Q23", "context": 'prices=[10,20,5], quantities=[2,1,4], categories={0:"A",1:"B",2:"A"}.', "prompt": "What will the agent-generated code return?", "options": [choice("A", '{"A":40.0,"B":20.0}'), choice("B", '{"A":15.0,"B":20.0}'), choice("C", '{"A":20.0,"B":20.0}'), choice("D", "Error")]},
                 {"id": "Q24", "prompt": "According to the task requirements, what should the correct return value be?", "options": [choice("A", '{"A":40.0,"B":20.0}'), choice("B", '{"A":15.0,"B":20.0}'), choice("C", '{"A":20.0,"B":20.0}'), choice("D", "None")]},
-                {"id": "Q25", "prompt": "What is the main problem with this AI-generated answer?", "options": [choice("A", "It does not perform element-wise multiplication"), choice("B", "It does not accumulate by category"), choice("C", "It does not round to two decimal places"), choice("D", "It has no problem")]},
+                {"id": "Q25", "prompt": "What hidden error should the human supervisor catch in this agent output?", "options": [choice("A", "It does not perform element-wise multiplication"), choice("B", "It does not accumulate by category"), choice("C", "It does not round to two decimal places"), choice("D", "It has no problem")]},
             ],
             ["Compute product revenue as price * quantity.", "Aggregate revenue by category.", "Round each category total to two decimal places."],
         ),
@@ -469,11 +469,11 @@ def monthly_product_summary(csv_path, category_map):
         result[cat] = result.get(cat, 0) + r
     return {k: round(v, 2) for k, v in result.items()}""",
             [
-                {"id": "Q26", "prompt": "Does this AI-generated answer fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
-                {"id": "Q27", "prompt": "Can this AI-generated answer be submitted directly?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
-                {"id": "Q28", "context": 'Rows: 2024-01,P1,2,10 and 2024-01,P2,3,5. category_map={"P1":"book","P2":"food"}.', "prompt": "What will the AI code return?", "options": [choice("A", '{"book":20.0,"food":15.0}'), choice("B", '{"book":12.0,"food":8.0}'), choice("C", '{"book":10.0,"food":5.0}'), choice("D", '"Invalid data"')]},
+                {"id": "Q26", "prompt": "Does the AI coding agent's generated code fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
+                {"id": "Q27", "prompt": "As the human supervisor, can you approve this agent output for delivery?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
+                {"id": "Q28", "context": 'Rows: 2024-01,P1,2,10 and 2024-01,P2,3,5. category_map={"P1":"book","P2":"food"}.', "prompt": "What will the agent-generated code return?", "options": [choice("A", '{"book":20.0,"food":15.0}'), choice("B", '{"book":12.0,"food":8.0}'), choice("C", '{"book":10.0,"food":5.0}'), choice("D", '"Invalid data"')]},
                 {"id": "Q29", "prompt": "According to the task requirements, what should the correct return value be?", "options": [choice("A", '{"book":20.0,"food":15.0}'), choice("B", '{"book":12.0,"food":8.0}'), choice("C", '{"book":10.0,"food":5.0}'), choice("D", '"Invalid data"')]},
-                {"id": "Q30", "prompt": "Which group of problems does this AI-generated answer have?", "options": [choice("A", 'Revenue uses addition instead of multiplication; unknown products and negative values do not return "Invalid data"'), choice("B", "It only should not use NumPy"), choice("C", "It only does not skip empty lines"), choice("D", "It has no problem")]},
+                {"id": "Q30", "prompt": "Which hidden problems should the human supervisor catch in this agent output?", "options": [choice("A", 'Revenue uses addition instead of multiplication; unknown products and negative values do not return "Invalid data"'), choice("B", "It only should not use NumPy"), choice("C", "It only does not skip empty lines"), choice("D", "It has no problem")]},
             ],
             ["Skip empty lines.", 'Return "Invalid data" for unknown product IDs or negative units/prices.', "Use NumPy to calculate units * price.", "Aggregate by category and round to two decimal places."],
         ),
@@ -537,21 +537,21 @@ C_TASKS = [
             {
                 "id": "T1_SC_responsibility",
                 "dimension": "Responsibility and Supervision",
-                "prompt": "If unknown ids are charged as 0, can this code be submitted directly?",
+                "prompt": "If unknown ids are charged as 0, can the human supervisor approve this agent output for delivery?",
                 "options": ["Can submit", "Cannot submit", "Not sure"],
             },
         ],
         "questions": [
-            {"id": "Q1", "prompt": "Does this AI-generated C answer fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
-            {"id": "Q2", "prompt": "Can this AI-generated C answer be submitted directly?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
+            {"id": "Q1", "prompt": "Does the AI coding agent's generated C code fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
+            {"id": "Q2", "prompt": "As the human supervisor, can you approve this agent C-code output for delivery?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
             {
                 "id": "Q3",
                 "context": "Given ids={1,9}, qty={2,1}, price_ids={1,2}, prices={10,50}, vip=0.",
-                "prompt": "What will the AI code return?",
+                "prompt": "What will the agent-generated code return?",
                 "options": [choice("A", "-1"), choice("B", "28"), choice("C", "20"), choice("D", "Compilation error")],
             },
             {"id": "Q4", "prompt": "According to the requirements, what should the correct return value be?", "options": [choice("A", "-1"), choice("B", "28"), choice("C", "20"), choice("D", "8")]},
-            {"id": "Q5", "prompt": "What is the main problem with this AI-generated answer?", "options": [choice("A", "VIP discount is calculated incorrectly"), choice("B", "Unknown product ids are treated as price 0"), choice("C", "The shipping threshold is missing"), choice("D", "The loop never runs")]},
+            {"id": "Q5", "prompt": "What hidden error should the human supervisor catch in this agent output?", "options": [choice("A", "VIP discount is calculated incorrectly"), choice("B", "Unknown product ids are treated as price 0"), choice("C", "The shipping threshold is missing"), choice("D", "The loop never runs")]},
         ],
     },
     {
@@ -585,12 +585,12 @@ C_TASKS = [
             {"id": "T2_SC_code_understanding", "dimension": "AI Code Understanding", "prompt": 'Can strcmp(line, "") skip a blank line read as "\\n"?', "options": ["Can", "Cannot", "Not sure"]},
             {"id": "T2_SC_output_debugging", "dimension": "AI Output Debugging", "prompt": "Will the code append to old output instead of overwriting it?", "options": ["Yes", "No", "Not sure"]},
             {"id": "T2_SC_verification_testing", "dimension": "Verification and Testing", "prompt": "Which input best tests blank-line handling?", "options": ['A. "a\\n"', 'B. "a\\n\\nb\\n"', "C. Empty file"], "values": ["A", "B", "C"]},
-            {"id": "T2_SC_responsibility", "dimension": "Responsibility and Supervision", "prompt": "If old output is kept in the file, can this code be submitted directly?", "options": ["Can submit", "Cannot submit", "Not sure"]},
+            {"id": "T2_SC_responsibility", "dimension": "Responsibility and Supervision", "prompt": "If old output is kept in the file, can the human supervisor approve this agent output for delivery?", "options": ["Can submit", "Cannot submit", "Not sure"]},
         ],
         "questions": [
-            {"id": "Q6", "prompt": "Does this AI-generated C answer fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
-            {"id": "Q7", "prompt": "Can this AI-generated C answer be submitted directly?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
-            {"id": "Q8", "context": 'Input file content is "a\\n\\nb\\n".', "prompt": "What will the AI code return?", "options": [choice("A", "2"), choice("B", "1"), choice("C", "0"), choice("D", "3")]},
+            {"id": "Q6", "prompt": "Does the AI coding agent's generated C code fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
+            {"id": "Q7", "prompt": "As the human supervisor, can you approve this agent C-code output for delivery?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
+            {"id": "Q8", "context": 'Input file content is "a\\n\\nb\\n".', "prompt": "What will the agent-generated code return?", "options": [choice("A", "2"), choice("B", "1"), choice("C", "0"), choice("D", "3")]},
             {"id": "Q9", "prompt": "According to the requirements, what should the correct return value be?", "options": [choice("A", "2"), choice("B", "3"), choice("C", "1"), choice("D", "0")]},
             {"id": "Q10", "prompt": "Which group of problems does this answer have?", "options": [choice("A", "Only missing fclose"), choice("B", "It does not skip newline-only blank lines and uses append mode"), choice("C", "It cannot read files at all"), choice("D", "It has no problem")]},
         ],
@@ -611,9 +611,9 @@ void build_report(Student students[], int n, int scores[][2], int score_n) {
     }
 }""",
         [
-            {"id": "Q11", "prompt": "Does this AI-generated C answer fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
-            {"id": "Q12", "prompt": "Can this AI-generated C answer be submitted directly?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
-            {"id": "Q13", "context": "students are [{id:2,name:Bob},{id:1,name:Ana}], scores={{1,90}}.", "prompt": "What will the AI code produce?", "options": [choice("A", "Bob has 0 and Ana has 90, original order unchanged"), choice("B", "Ana is moved before Bob"), choice("C", "Both scores become 90"), choice("D", "Compilation error")]},
+            {"id": "Q11", "prompt": "Does the AI coding agent's generated C code fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
+            {"id": "Q12", "prompt": "As the human supervisor, can you approve this agent C-code output for delivery?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
+            {"id": "Q13", "context": "students are [{id:2,name:Bob},{id:1,name:Ana}], scores={{1,90}}.", "prompt": "What will the agent-generated code produce?", "options": [choice("A", "Bob has 0 and Ana has 90, original order unchanged"), choice("B", "Ana is moved before Bob"), choice("C", "Both scores become 90"), choice("D", "Compilation error")]},
             {"id": "Q14", "prompt": "According to the task requirements, what should the score values be?", "options": [choice("A", "Bob has 0 and Ana has 90"), choice("B", "Bob has 90 and Ana has 0"), choice("C", "Both scores become 0"), choice("D", "No scores should be assigned")]},
             {"id": "Q15", "prompt": "What is the main problem with this answer?", "options": [choice("A", "It has no problem"), choice("B", "It does not handle missing scores"), choice("C", "It changes names"), choice("D", "It cannot use structs")]},
         ],
@@ -634,9 +634,9 @@ void build_report(Student students[], int n, int scores[][2], int score_n) {
     return sum / n;
 }""",
         [
-            {"id": "Q16", "prompt": "Does this AI-generated C answer fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
-            {"id": "Q17", "prompt": "Can this AI-generated C answer be submitted directly?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
-            {"id": "Q18", "context": "arr={2,4,-1}, n=3. -1 means invalid and should be ignored.", "prompt": "What will the AI code return in normal integer-division C behavior?", "options": [choice("A", "3.0"), choice("B", "1.0"), choice("C", "2.5"), choice("D", "Error")]},
+            {"id": "Q16", "prompt": "Does the AI coding agent's generated C code fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
+            {"id": "Q17", "prompt": "As the human supervisor, can you approve this agent C-code output for delivery?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
+            {"id": "Q18", "context": "arr={2,4,-1}, n=3. -1 means invalid and should be ignored.", "prompt": "What will the agent-generated code return in normal integer-division C behavior?", "options": [choice("A", "3.0"), choice("B", "1.0"), choice("C", "2.5"), choice("D", "Error")]},
             {"id": "Q19", "prompt": "According to the requirements, what should the correct return value be?", "options": [choice("A", "3.0"), choice("B", "1.0"), choice("C", "-1.0"), choice("D", "0.0")]},
             {"id": "Q20", "prompt": "What is the main problem with this answer?", "options": [choice("A", "It uses a loop"), choice("B", "It includes sentinel -1 and performs integer division"), choice("C", "It returns double"), choice("D", "It has no problem")]},
         ],
@@ -652,9 +652,9 @@ void build_report(Student students[], int n, int scores[][2], int score_n) {
     }
 }""",
         [
-            {"id": "Q21", "prompt": "Does this AI-generated C answer fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
-            {"id": "Q22", "prompt": "Can this AI-generated C answer be submitted directly?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
-            {"id": "Q23", "context": "prices={10,20,5}, qty={2,1,4}, cat={0,1,0}, cat_count=2.", "prompt": "What totals will the AI code produce?", "options": [choice("A", "totals[0]=40, totals[1]=20"), choice("B", "totals[0]=15, totals[1]=20"), choice("C", "totals[0]=20, totals[1]=20"), choice("D", "Compilation error")]},
+            {"id": "Q21", "prompt": "Does the AI coding agent's generated C code fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
+            {"id": "Q22", "prompt": "As the human supervisor, can you approve this agent C-code output for delivery?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
+            {"id": "Q23", "context": "prices={10,20,5}, qty={2,1,4}, cat={0,1,0}, cat_count=2.", "prompt": "What totals will the agent-generated code produce?", "options": [choice("A", "totals[0]=40, totals[1]=20"), choice("B", "totals[0]=15, totals[1]=20"), choice("C", "totals[0]=20, totals[1]=20"), choice("D", "Compilation error")]},
             {"id": "Q24", "prompt": "According to the requirements, what should the correct totals be?", "options": [choice("A", "totals[0]=40, totals[1]=20"), choice("B", "totals[0]=15, totals[1]=20"), choice("C", "totals[0]=20, totals[1]=20"), choice("D", "All totals should be 0")]},
             {"id": "Q25", "prompt": "What is the main problem with this answer?", "options": [choice("A", "It has no problem"), choice("B", "It does not multiply price and quantity"), choice("C", "It does not initialize totals"), choice("D", "It uses arrays")]},
         ],
@@ -679,9 +679,9 @@ void build_report(Student students[], int n, int scores[][2], int score_n) {
     return 1;
 }""",
         [
-            {"id": "Q26", "prompt": "Does this AI-generated C answer fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
-            {"id": "Q27", "prompt": "Can this AI-generated C answer be submitted directly?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
-            {"id": "Q28", "context": "Rows are 1,2,10 and 2,3,5. ids={1,2}, cats={0,1}.", "prompt": "What totals will the AI code produce?", "options": [choice("A", "totals[0]=20, totals[1]=15"), choice("B", "totals[0]=12, totals[1]=8"), choice("C", "totals[0]=10, totals[1]=5"), choice("D", "return 0")]},
+            {"id": "Q26", "prompt": "Does the AI coding agent's generated C code fully satisfy the task requirements?", "options": [choice("A", "Yes"), choice("B", "No")]},
+            {"id": "Q27", "prompt": "As the human supervisor, can you approve this agent C-code output for delivery?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
+            {"id": "Q28", "context": "Rows are 1,2,10 and 2,3,5. ids={1,2}, cats={0,1}.", "prompt": "What totals will the agent-generated code produce?", "options": [choice("A", "totals[0]=20, totals[1]=15"), choice("B", "totals[0]=12, totals[1]=8"), choice("C", "totals[0]=10, totals[1]=5"), choice("D", "return 0")]},
             {"id": "Q29", "prompt": "According to the requirements, what should the correct totals be?", "options": [choice("A", "totals[0]=20, totals[1]=15"), choice("B", "totals[0]=12, totals[1]=8"), choice("C", "totals[0]=10, totals[1]=5"), choice("D", "return 0")]},
             {"id": "Q30", "prompt": "Which group of problems does this answer have?", "options": [choice("A", "Revenue uses addition instead of multiplication and unknown/negative data does not fail"), choice("B", "Only the loop condition is wrong"), choice("C", "Only totals are not initialized"), choice("D", "It has no problem")]},
         ],
@@ -848,7 +848,7 @@ if (scores[j][0] == students[i].id) {
 }""",
         [
             {"id": "Q11", "prompt": "Is the agent's conclusion supported by the observation?", "options": [choice("A", "Yes"), choice("B", "No")]},
-            {"id": "Q12", "prompt": "Can this agent result be submitted directly?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
+            {"id": "Q12", "prompt": "As the human supervisor, can you approve this agent result for delivery?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
             {"id": "Q13", "prompt": "What does the observation show?", "options": [choice("A", "Bob has 0 and Ana has 90, original order unchanged"), choice("B", "Ana is moved before Bob"), choice("C", "Both scores become 90"), choice("D", "The program fails to run")]},
             {"id": "Q14", "prompt": "According to the user goal, what should happen for Bob's missing score?", "options": [choice("A", "Bob should receive 0"), choice("B", "Bob should receive 90"), choice("C", "Bob should be deleted"), choice("D", "The program should stop")]},
             {"id": "Q15", "prompt": "What is the main supervision decision?", "options": [choice("A", "Reject because every agent output is risky"), choice("B", "Require unrelated refactoring"), choice("C", "Delete the test data"), choice("D", "Allow submission because the trace supports correctness")]},
@@ -923,7 +923,7 @@ for (int i = 0; i < n; i++) {
 }""",
         [
             {"id": "Q21", "prompt": "Is the final claim supported by the trace?", "options": [choice("A", "Yes"), choice("B", "No")]},
-            {"id": "Q22", "prompt": "Can this agent result be submitted directly?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
+            {"id": "Q22", "prompt": "As the human supervisor, can you approve this agent result for delivery?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
             {"id": "Q23", "prompt": "For prices={10,20,5}, qty={2,1,4}, cat={0,1,0}, what totals are observed?", "options": [choice("A", "totals[0]=40, totals[1]=20"), choice("B", "totals[0]=15, totals[1]=20"), choice("C", "totals[0]=20, totals[1]=20"), choice("D", "Compilation error")]},
             {"id": "Q24", "prompt": "According to the user goal, what should the totals be?", "options": [choice("A", "totals[0]=40, totals[1]=20"), choice("B", "totals[0]=15, totals[1]=20"), choice("C", "totals[0]=20, totals[1]=20"), choice("D", "All totals should be 0")]},
             {"id": "Q25", "prompt": "What is the main supervision decision?", "options": [choice("A", "Reject because it uses arrays"), choice("B", "Require a rewrite even though the trace is correct"), choice("C", "Delete the output file"), choice("D", "Allow submission; no issue is shown")]},
@@ -961,7 +961,7 @@ if (cat >= 0) {
 return 1;""",
         [
             {"id": "Q26", "prompt": "Is the agent's final conclusion fully supported by the trace?", "options": [choice("A", "Yes"), choice("B", "No")]},
-            {"id": "Q27", "prompt": "Can this agent result be submitted directly?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
+            {"id": "Q27", "prompt": "As the human supervisor, can you approve this agent result for delivery?", "options": [choice("A", "Can submit"), choice("B", "Cannot submit")]},
             {"id": "Q28", "prompt": "For rows 1,2,10 and 2,3,5, what totals did the agent's code produce?", "options": [choice("A", "totals[0]=20, totals[1]=15"), choice("B", "totals[0]=12, totals[1]=8"), choice("C", "totals[0]=10, totals[1]=5"), choice("D", "return 0")]},
             {"id": "Q29", "prompt": "According to the user goal, what should the totals be for those rows?", "options": [choice("A", "totals[0]=20, totals[1]=15"), choice("B", "totals[0]=12, totals[1]=8"), choice("C", "totals[0]=10, totals[1]=5"), choice("D", "return 0")]},
             {"id": "Q30", "prompt": "Which supervision judgment is most accurate?", "options": [choice("A", "The agent used addition instead of multiplication and did not prove invalid-row handling"), choice("B", "Only the filename is wrong"), choice("C", "Only totals initialization is wrong"), choice("D", "There is no issue")]},
@@ -1224,11 +1224,11 @@ AGENT_ZH_TASK_TEXT = {
             "智能体(agent)在声称完成前，必须运行一个包含未知商品编号的测试。",
         ],
         "questions": {
-            "Q1": "智能体(agent)最后说“测试通过”，这个说法是否有运行记录支持？",
-            "Q2": "智能体(agent)是否真的验证了“未知商品编号应被处理”这个要求？",
-            "Q3": "修改后的代码(code)是否符合用户目标？",
-            "Q4": "如果 ids={1,9} 且 9 是未知商品编号，正确实现应该返回什么？",
-            "Q5": "这里最需要监督者发现的问题是什么？",
+            "Q1": "作为人工监督者(human supervisor)，你认为智能体(agent)最后说“测试通过”是否有运行记录支持？",
+            "Q2": "该智能体(agent)在交付前，是否真的验证了“未知商品编号应被处理”这个要求？",
+            "Q3": "该智能体(agent)交付的代码(code)是否符合用户目标？",
+            "Q4": "作为人工监督者(human supervisor)，如果 ids={1,9} 且 9 是未知商品编号，正确实现应该返回什么？",
+            "Q5": "人工监督者(human supervisor)最需要发现的隐藏问题是什么？",
         },
     },
     2: {
@@ -1240,11 +1240,11 @@ AGENT_ZH_TASK_TEXT = {
             "智能体(agent)必须根据实际看到的输出，判断是否还需要继续修改。",
         ],
         "questions": {
-            "Q6": "智能体(agent)说“测试通过”，这个说法是否有观察结果支持？",
-            "Q7": "智能体(agent)是否完成了“覆盖写入”这个要求？",
+            "Q6": "作为人工监督者(human supervisor)，你认为智能体(agent)说“测试通过”是否有观察结果支持？",
+            "Q7": "该智能体(agent)在交付前，是否完成了“覆盖写入”这个要求？",
             "Q8": "对于输入 \"a\\n\\nb\\n\"，运行记录里智能体(agent)的代码(code)输出了什么？",
-            "Q9": "根据用户目标，正确计数应该是多少？",
-            "Q10": "监督者应该发现哪一类问题？",
+            "Q9": "作为人工监督者(human supervisor)，根据用户目标，正确计数应该是多少？",
+            "Q10": "人工监督者(human supervisor)在交付前应该发现哪一类隐藏问题？",
         },
     },
     3: {
@@ -1256,11 +1256,11 @@ AGENT_ZH_TASK_TEXT = {
             "这道题本身是正确案例，用来检查监督者能否接受确实有效的智能体(agent)结果。",
         ],
         "questions": {
-            "Q11": "智能体(agent)的结论是否有观察结果支持？",
+            "Q11": "作为人工监督者(human supervisor)，你认为智能体(agent)的结论是否有观察结果支持？",
             "Q12": "作为人工监督者(human supervisor)，你认为这个智能体(agent)交付结果是否可以直接交付？",
             "Q13": "运行记录显示了什么？",
-            "Q14": "根据用户目标，Bob 缺失成绩时应该怎样处理？",
-            "Q15": "最合适的监督决定是什么？",
+            "Q14": "作为人工监督者(human supervisor)，根据用户目标，Bob 缺失成绩时应该怎样处理？",
+            "Q15": "最合适的交付监督决定是什么？",
         },
     },
     4: {
@@ -1272,11 +1272,11 @@ AGENT_ZH_TASK_TEXT = {
             "智能体(agent)在声称成功前，必须查看具体测试输出。",
         ],
         "questions": {
-            "Q16": "智能体(agent)最后的结论是否有测试观察结果支持？",
-            "Q17": "智能体(agent)是否实现了“忽略 -1”这个要求？",
+            "Q16": "作为人工监督者(human supervisor)，你认为智能体(agent)最后的结论是否有测试观察结果支持？",
+            "Q17": "该智能体(agent)在交付前，是否实现了“忽略 -1”这个要求？",
             "Q18": "对于 arr={2,4,-1}，智能体(agent)的代码(code)输出了什么？",
-            "Q19": "根据用户目标，正确平均数应该是多少？",
-            "Q20": "监督者下一步应该要求什么？",
+            "Q19": "作为人工监督者(human supervisor)，根据用户目标，正确平均数应该是多少？",
+            "Q20": "人工监督者(human supervisor)下一步应该要求什么进一步测试或修改？",
         },
     },
     5: {
@@ -1287,11 +1287,11 @@ AGENT_ZH_TASK_TEXT = {
             "这道题本身是正确案例，用来检查监督者能否正确接受结果。",
         ],
         "questions": {
-            "Q21": "智能体(agent)最后的说法是否有运行流程支持？",
+            "Q21": "作为人工监督者(human supervisor)，你认为智能体(agent)最后的说法是否有运行流程支持？",
             "Q22": "作为人工监督者(human supervisor)，你认为这个智能体(agent)交付结果是否可以直接交付？",
             "Q23": "对于 prices={10,20,5}, qty={2,1,4}, cat={0,1,0}，观察到的 totals 是什么？",
-            "Q24": "根据用户目标，totals 应该是什么？",
-            "Q25": "最合适的监督决定是什么？",
+            "Q24": "作为人工监督者(human supervisor)，根据用户目标，totals 应该是什么？",
+            "Q25": "最合适的交付监督决定是什么？",
         },
     },
     6: {
@@ -1302,11 +1302,11 @@ AGENT_ZH_TASK_TEXT = {
             "智能体(agent)不能只用正常数据测试就声称所有边界情况都处理好了。",
         ],
         "questions": {
-            "Q26": "智能体(agent)最后的结论是否完全有运行流程支持？",
+            "Q26": "作为人工监督者(human supervisor)，你认为智能体(agent)最后的结论是否完全有运行流程支持？",
             "Q27": "作为人工监督者(human supervisor)，你认为这个智能体(agent)交付结果是否可以直接交付？",
             "Q28": "对于 1,2,10 和 2,3,5 这两行，智能体(agent)的代码(code)生成了哪些 totals？",
-            "Q29": "根据用户目标，这两行的正确 totals 应该是什么？",
-            "Q30": "哪一个监督判断最准确？",
+            "Q29": "作为人工监督者(human supervisor)，根据用户目标，这两行的正确 totals 应该是什么？",
+            "Q30": "哪一个监督判断最准确地指出了隐藏的交付风险？",
         },
     },
 }
@@ -1427,6 +1427,79 @@ COMMON_OPTION_TEXT_ZH = {
     "It only does not skip empty lines": "只是没有跳过空行",
 }
 
+CODE_TASK_QUESTION_CONTEXT_EN = {
+    "Q1": "Does the AI coding agent's generated code fully satisfy the task requirements?",
+    "Q2": "As the human supervisor, can you approve this agent output for delivery?",
+    "Q3": "What will the agent-generated code return?",
+    "Q4": "As the human supervisor, according to the task requirements, what should the correct return value be?",
+    "Q5": "What hidden error should the human supervisor catch in this agent output?",
+    "Q6": "Does the AI coding agent's generated code fully satisfy the task requirements?",
+    "Q7": "As the human supervisor, can you approve this agent output for delivery?",
+    "Q8": "What is the agent-generated code most likely to do?",
+    "Q9": "As the human supervisor, according to the task requirements, what should the correct returned result be?",
+    "Q10": "Which hidden problems should the human supervisor catch in this agent output?",
+    "Q11": "Does the AI coding agent's generated code fully satisfy the task requirements?",
+    "Q12": "As the human supervisor, can you approve this agent output for delivery?",
+    "Q13": "What will the agent-generated code return?",
+    "Q14": "As the human supervisor, according to the task requirements, what should the correct result be?",
+    "Q15": "What hidden error should the human supervisor catch in this agent output?",
+    "Q16": "Does the AI coding agent's generated code fully satisfy the task requirements?",
+    "Q17": "As the human supervisor, can you approve this agent output for delivery?",
+    "Q18": "What will the agent-generated code most likely return?",
+    "Q19": "As the human supervisor, according to the task requirements, what should the correct return value be?",
+    "Q20": "What hidden error should the human supervisor catch in this agent output?",
+    "Q21": "Does the AI coding agent's generated code fully satisfy the task requirements?",
+    "Q22": "As the human supervisor, can you approve this agent output for delivery?",
+    "Q23": "What will the agent-generated code return?",
+    "Q24": "As the human supervisor, according to the task requirements, what should the correct result be?",
+    "Q25": "What hidden error should the human supervisor catch in this agent output?",
+    "Q26": "Does the AI coding agent's generated code fully satisfy the task requirements?",
+    "Q27": "As the human supervisor, can you approve this agent output for delivery?",
+    "Q28": "What will the agent-generated code return?",
+    "Q29": "As the human supervisor, according to the task requirements, what should the correct result be?",
+    "Q30": "Which hidden problems should the human supervisor catch in this agent output?",
+}
+
+AGENT_TASK_QUESTION_CONTEXT_EN = {
+    "Q1": "As the human supervisor, is the agent's final claim supported by the observation log?",
+    "Q2": "Did the agent actually verify the required unknown-id behavior before delivery?",
+    "Q3": "Does the agent's delivered code align with the user goal?",
+    "Q4": "As the human supervisor, what should a correct implementation return for ids={1,9} when 9 is unknown?",
+    "Q5": "What hidden supervision problem should the human supervisor catch?",
+    "Q6": "As the human supervisor, is the agent's claim that the test passed supported by the observation?",
+    "Q7": "Did the agent complete the required overwrite-write action before delivery?",
+    "Q8": "For input \"a\\n\\nb\\n\", what did the agent's code output in the log?",
+    "Q9": "As the human supervisor, according to the user goal, what should the count be?",
+    "Q10": "Which hidden issue should the human supervisor catch before delivery?",
+    "Q11": "As the human supervisor, is the agent's conclusion supported by the observation?",
+    "Q12": "As the human supervisor, can you approve this agent result for delivery?",
+    "Q13": "What does the agent's observation log show?",
+    "Q14": "As the human supervisor, according to the user goal, what should happen for Bob's missing score?",
+    "Q15": "What is the correct human-supervisor delivery decision?",
+    "Q16": "As the human supervisor, is the agent's final conclusion supported by the test observation?",
+    "Q17": "Did the agent implement the required sentinel exclusion before delivery?",
+    "Q18": "For arr={2,4,-1}, what did the agent's code output?",
+    "Q19": "As the human supervisor, according to the user goal, what should the correct average be?",
+    "Q20": "What further testing or revision should the human supervisor require next?",
+    "Q21": "As the human supervisor, is the final claim supported by the agent trace?",
+    "Q22": "As the human supervisor, can you approve this agent result for delivery?",
+    "Q23": "For prices={10,20,5}, qty={2,1,4}, cat={0,1,0}, what totals are observed?",
+    "Q24": "As the human supervisor, according to the user goal, what should the totals be?",
+    "Q25": "What is the correct human-supervisor delivery decision?",
+    "Q26": "As the human supervisor, is the agent's final conclusion fully supported by the trace?",
+    "Q27": "As the human supervisor, can you approve this agent result for delivery?",
+    "Q28": "For rows 1,2,10 and 2,3,5, what totals did the agent's code produce?",
+    "Q29": "As the human supervisor, according to the user goal, what should the totals be for those rows?",
+    "Q30": "Which supervision judgment best captures the hidden delivery risk?",
+}
+
+
+def apply_english_task_question_context(task: dict, version: str) -> None:
+    prompt_map = AGENT_TASK_QUESTION_CONTEXT_EN if version == "agent" else CODE_TASK_QUESTION_CONTEXT_EN
+    for question in task["questions"]:
+        if question["id"] in prompt_map:
+            question["prompt"] = prompt_map[question["id"]]
+
 
 AGENT_TRACE_REPLACEMENTS_ZH = {
     "Agent plan:": "智能体(agent)计划：",
@@ -1497,6 +1570,7 @@ def localized_task(task_id: int, lang: str = "en", version: str = "python") -> d
     task = deepcopy(get_task(task_id, normalized_version))
     task["questionnaire_version"] = normalized_version
     if lang != "zh":
+        apply_english_task_question_context(task, normalized_version)
         return task
     if normalized_version == "agent":
         zh = AGENT_ZH_TASK_TEXT.get(task_id, {})
