@@ -86,7 +86,7 @@ POSTTEST_OPTION_ORDER = ["E", "D", "C", "B", "A"]
 POSTTEST_SECTIONS = [
     {
         "id": "mindset",
-        "title": {"en": "AI Supervision Mindset", "zh": "AI 监督意识"},
+        "title": {"en": "AI Supervision Mindset", "zh": "人工智能(AI)监督意识"},
         "question_ids": [
             "post_supervisor_role",
             "post_requirements_first",
@@ -112,7 +112,7 @@ POSTTEST_QUESTIONS = [
         "section": "mindset",
         "prompt": {
             "en": "When working with AI-generated code, I see my role as supervising AI output rather than simply accepting it.",
-            "zh": "使用 AI 生成代码时，我认为自己的角色是监督 AI 输出，而不是简单接受其答案。",
+            "zh": "看到人工智能(AI)或智能体(agent)生成的代码(code)时，我认为自己应该负责检查它，而不是直接接受。",
         },
     },
     {
@@ -120,7 +120,7 @@ POSTTEST_QUESTIONS = [
         "section": "mindset",
         "prompt": {
             "en": "When evaluating AI-generated code, I first check whether it follows all task requirements.",
-            "zh": "评估 AI 生成代码时，我会首先检查它是否符合所有任务要求。",
+            "zh": "检查人工智能(AI)生成的代码(code)时，我会先核对它有没有满足所有任务要求。",
         },
     },
     {
@@ -128,7 +128,7 @@ POSTTEST_QUESTIONS = [
         "section": "mindset",
         "prompt": {
             "en": "I pay attention to whether the AI has missed important conditions, constraints, or edge cases in the task.",
-            "zh": "我会关注 AI 是否遗漏了任务中的重要条件、限制或边界情况。",
+            "zh": "我会留意人工智能(AI)是否漏掉了题目中的重要条件、限制或特殊情况。",
         },
     },
     {
@@ -136,7 +136,7 @@ POSTTEST_QUESTIONS = [
         "section": "mindset",
         "prompt": {
             "en": "I trace the actual logic of AI-generated code rather than only judging whether it looks reasonable.",
-            "zh": "我会追踪 AI 生成代码的实际逻辑，而不只是判断它看起来是否合理。",
+            "zh": "我会顺着人工智能(AI)生成代码(code)的实际步骤去判断，而不只看它表面上像不像对的。",
         },
     },
     {
@@ -144,7 +144,7 @@ POSTTEST_QUESTIONS = [
         "section": "mindset",
         "prompt": {
             "en": "I try to predict the output of AI-generated code for specific inputs to find possible errors.",
-            "zh": "我会尝试预测 AI 生成代码在具体输入下的输出，以发现可能的错误。",
+            "zh": "我会用具体输入来推一遍代码(code)会输出什么，从而发现可能的错误。",
         },
     },
     {
@@ -152,7 +152,7 @@ POSTTEST_QUESTIONS = [
         "section": "mindset",
         "prompt": {
             "en": "I design test cases or counterexamples to check whether AI-generated code is correct.",
-            "zh": "我会设计测试用例或反例来检查 AI 生成代码是否正确。",
+            "zh": "我会设计测试用例(test case)或反例，检查人工智能(AI)生成的代码(code)是否真的正确。",
         },
     },
     {
@@ -160,7 +160,7 @@ POSTTEST_QUESTIONS = [
         "section": "responsibility",
         "prompt": {
             "en": "I can judge when AI-generated code needs human correction or intervention.",
-            "zh": "我能够判断 AI 生成代码何时需要人工修改或干预。",
+            "zh": "我能判断什么时候需要人工修改或介入人工智能(AI)生成的代码(code)。",
         },
     },
     {
@@ -168,7 +168,7 @@ POSTTEST_QUESTIONS = [
         "section": "responsibility",
         "prompt": {
             "en": "Before submitting AI-generated code, I consider the possible risks and my responsibility for errors.",
-            "zh": "提交 AI 生成代码前，我会考虑潜在风险以及自己对错误的责任。",
+            "zh": "提交人工智能(AI)生成的代码(code)前，我会考虑可能的风险，以及自己需要承担的检查责任。",
         },
     },
 ]
@@ -990,49 +990,49 @@ def task_question_ids(task_id: int, version: str = "python") -> list[str]:
 
 ZH_TASK_TEXT = {
     1: {
-        "title": "任务 1：字典查价与订单总价",
+        "title": "任务 1：按商品编号查价并计算订单总价",
         "requirements": [
             "calculate_order_total(items, price_table, vip=False)",
-            "items 是字典，格式为 {商品ID: 数量}。",
-            "price_table 是字典，格式为 {商品ID: 单价}。",
+            "items 是字典(dictionary)，格式为 {商品ID: 数量}。",
+            "price_table 是字典(dictionary)，格式为 {商品ID: 单价}。",
             '如果 items 中出现 price_table 不存在的商品 ID，应返回 "Unknown item"。',
             "如果 vip=True，小计享受 10% 折扣。",
             "折扣后小计如果大于 100，免运费；否则运费为 8。",
             "返回最终金额，保留两位小数。",
         ],
         "questions": {
-            "Q1": "这份 AI 答案是否完全满足任务要求？",
-            "Q2": "这份 AI 答案是否可以直接提交？",
-            "Q3": "AI 代码会返回什么？",
+            "Q1": "这份人工智能(AI)给出的代码(code)是否完全满足任务要求？",
+            "Q2": "这份人工智能(AI)给出的代码(code)是否可以直接交付？",
+            "Q3": "这段代码(code)实际会返回什么？",
             "Q4": "根据任务要求，上述输入的正确返回值应该是什么？",
-            "Q5": "这份 AI 答案最主要的问题是什么？",
+            "Q5": "这份人工智能(AI)答案最主要的问题是什么？",
         },
         "contexts": {"Q3": '给定 price_table={"A":10,"B":50}, items={"A":2,"X":1}, vip=False。'},
         "supervision": {
             "T1_SC_problem_definition": '任务是否要求未知商品 ID 返回 "Unknown item"？',
             "T1_SC_code_understanding": "price_table.get(pid, 0) 是否会把未知商品价格当作 0？",
-            "T1_SC_output_debugging": '对 items={"A":2,"X":1}，未知商品 X 是否会被 AI 代码静默忽略？',
+            "T1_SC_output_debugging": '对 items={"A":2,"X":1}，未知商品 X 是否会被人工智能(AI)代码(code)悄悄忽略？',
             "T1_SC_verification_testing": "哪个输入最能暴露未知商品问题？",
-            "T1_SC_responsibility": "如果未知商品被当作 0 元处理，这份代码是否可直接提交？",
+            "T1_SC_responsibility": "如果未知商品被当作 0 元处理，这份代码(code)是否可直接交付？",
         },
     },
     2: {
-        "title": "任务 2：文件读写与标签计数",
+        "title": "任务 2：读取文件并统计标签数量",
         "requirements": [
             "count_tags(input_path, output_path)",
             "输入文件中每一行格式为：user,tag。",
             "空行应被跳过。",
             "tag 前后的空格应被去掉。",
-            "统计每个 tag 出现次数，并返回字典。",
+            "统计每个 tag 出现次数，并返回字典(dictionary)。",
             "将结果写入 output_path，格式为 tag,count。",
             "输出文件应按 tag 字母顺序排序，并覆盖旧内容。",
         ],
         "questions": {
-            "Q6": "这份 AI 答案是否完全满足任务要求？",
-            "Q7": "这份 AI 答案是否可以直接提交？",
-            "Q8": "AI 代码最可能发生什么？",
-            "Q9": "根据任务要求，上述输入的正确返回字典应该是什么？",
-            "Q10": "这份 AI 答案的问题包括哪一组？",
+            "Q6": "这份人工智能(AI)给出的代码(code)是否完全满足任务要求？",
+            "Q7": "这份人工智能(AI)给出的代码(code)是否可以直接交付？",
+            "Q8": "这段代码(code)最可能发生什么？",
+            "Q9": "根据任务要求，上述输入的正确返回字典(dictionary)应该是什么？",
+            "Q10": "这份人工智能(AI)答案的问题包括哪一组？",
         },
         "contexts": {"Q8": "输入文件内容为：u1,python，然后一个空行，然后 u2,ai。"},
         "supervision": {
@@ -1040,7 +1040,7 @@ ZH_TASK_TEXT = {
             "T2_SC_code_understanding": 'if line == "" 能否跳过文件中的空行 "\\n"？',
             "T2_SC_output_debugging": '遇到空行时，user, tag = line.split(",") 是否可能报错？',
             "T2_SC_verification_testing": "哪个输入最能测试空行处理？",
-            "T2_SC_responsibility": "如果代码可能把旧输出保留在文件中，这份代码是否可直接提交？",
+            "T2_SC_responsibility": "如果代码(code)可能把旧输出保留在文件中，这份代码(code)是否可直接交付？",
         },
     },
     3: {
@@ -1049,19 +1049,19 @@ ZH_TASK_TEXT = {
             "读取 student_id,name 格式的学生档案文件。",
             "空行应被跳过。",
             "scores 中缺失的学生成绩记为 0。",
-            "返回按 student_id 升序排列的字典列表。",
+            "返回按 student_id 从小到大排列的字典(dictionary)列表。",
         ],
         "questions": {
-            "Q11": "这份 AI 答案是否完全满足任务要求？",
-            "Q12": "这份 AI 答案是否可以直接提交？",
-            "Q13": "AI 代码会返回什么？",
+            "Q11": "这份人工智能(AI)给出的代码(code)是否完全满足任务要求？",
+            "Q12": "这份人工智能(AI)给出的代码(code)是否可以直接交付？",
+            "Q13": "这段代码(code)会返回什么？",
             "Q14": "根据任务要求，上述输入的正确返回值应该是什么？",
-            "Q15": "这份 AI 答案最主要的问题是什么？",
+            "Q15": "这份人工智能(AI)答案最主要的问题是什么？",
         },
         "contexts": {"Q13": '档案文件：s2,Bob 然后 s1,Ana。scores={"s1":90}。'},
     },
     4: {
-        "title": "任务 4：NumPy 数组标准化",
+        "title": "任务 4：用数值计算库(NumPy)处理数组",
         "requirements": [
             "计算均值和标准差时应忽略 np.nan。",
             "原本为 np.nan 的位置仍保留 np.nan。",
@@ -1069,44 +1069,44 @@ ZH_TASK_TEXT = {
             "返回结果保留两位小数。",
         ],
         "questions": {
-            "Q16": "这份 AI 答案是否完全满足任务要求？",
-            "Q17": "这份 AI 答案是否可以直接提交？",
-            "Q18": "AI 代码最可能返回什么？",
+            "Q16": "这份人工智能(AI)给出的代码(code)是否完全满足任务要求？",
+            "Q17": "这份人工智能(AI)给出的代码(code)是否可以直接交付？",
+            "Q18": "这段代码(code)最可能返回什么？",
             "Q19": "根据任务要求，上述输入的正确返回值应该是什么？",
-            "Q20": "这份 AI 答案最主要的问题是什么？",
+            "Q20": "这份人工智能(AI)答案最主要的问题是什么？",
         },
         "contexts": {"Q18": "arr = np.array([1.0, 2.0, np.nan])"},
     },
     5: {
-        "title": "任务 5：NumPy 与字典分类汇总",
+        "title": "任务 5：用数值计算库(NumPy)和字典(dictionary)按类别汇总",
         "requirements": [
             "每个商品销售额为 price * quantity。",
             "按类别汇总销售额。",
             "每个类别金额保留两位小数。",
         ],
         "questions": {
-            "Q21": "这份 AI 答案是否完全满足任务要求？",
-            "Q22": "这份 AI 答案是否可以直接提交？",
-            "Q23": "AI 代码会返回什么？",
+            "Q21": "这份人工智能(AI)给出的代码(code)是否完全满足任务要求？",
+            "Q22": "这份人工智能(AI)给出的代码(code)是否可以直接交付？",
+            "Q23": "这段代码(code)会返回什么？",
             "Q24": "根据任务要求，上述输入的正确返回值应该是什么？",
-            "Q25": "这份 AI 答案最主要的问题是什么？",
+            "Q25": "这份人工智能(AI)答案最主要的问题是什么？",
         },
         "contexts": {"Q23": 'prices=[10,20,5], quantities=[2,1,4], categories={0:"A",1:"B",2:"A"}。'},
     },
     6: {
-        "title": "任务 6：文件、字典与 NumPy 综合汇总",
+        "title": "任务 6：综合处理文件、字典(dictionary)和数值计算库(NumPy)",
         "requirements": [
             "空行应被跳过。",
             '未知 product_id 或负数 units/price 应立即返回 "Invalid data"。',
-            "使用 NumPy 计算每行销售额：units * price。",
+            "使用数值计算库(NumPy)计算每行销售额：units * price。",
             "按类别汇总销售额并保留两位小数。",
         ],
         "questions": {
-            "Q26": "这份 AI 答案是否完全满足任务要求？",
-            "Q27": "这份 AI 答案是否可以直接提交？",
-            "Q28": "AI 代码会返回什么？",
+            "Q26": "这份人工智能(AI)给出的代码(code)是否完全满足任务要求？",
+            "Q27": "这份人工智能(AI)给出的代码(code)是否可以直接交付？",
+            "Q28": "这段代码(code)会返回什么？",
             "Q29": "根据任务要求，上述输入的正确返回值应该是什么？",
-            "Q30": "这份 AI 答案的问题包括哪一组？",
+            "Q30": "这份人工智能(AI)答案的问题包括哪一组？",
         },
         "contexts": {"Q28": '输入行：2024-01,P1,2,10 和 2024-01,P2,3,5。category_map={"P1":"book","P2":"food"}。'},
     },
@@ -1114,7 +1114,7 @@ ZH_TASK_TEXT = {
 
 C_ZH_TASK_TEXT = {
     1: {
-        "title": "C 任务 1：商品价格查找与订单总价",
+        "title": "C 任务 1：按商品编号查价并计算订单总价",
         "requirements": [
             "double calculate_total(int ids[], int qty[], int n, int price_ids[], double prices[], int m, int vip)",
             "对 ids 中的每个商品编号，在 price_ids 中查找匹配编号。",
@@ -1124,11 +1124,11 @@ C_ZH_TASK_TEXT = {
             "返回最终金额。",
         ],
         "questions": {
-            "Q1": "这份 AI 生成的 C 语言答案是否完全满足任务要求？",
-            "Q2": "这份 AI 生成的 C 语言答案是否可以直接提交？",
-            "Q3": "AI 代码会返回什么？",
+            "Q1": "这份人工智能(AI)生成的 C 语言代码(code)是否完全满足任务要求？",
+            "Q2": "这份人工智能(AI)生成的 C 语言代码(code)是否可以直接交付？",
+            "Q3": "这段代码(code)会返回什么？",
             "Q4": "根据任务要求，正确返回值应该是什么？",
-            "Q5": "这份 AI 生成答案的主要问题是什么？",
+            "Q5": "这份人工智能(AI)答案的主要问题是什么？",
         },
         "contexts": {"Q3": "给定 ids={1,9}, qty={2,1}, price_ids={1,2}, prices={10,50}, vip=0。"},
         "supervision": {
@@ -1136,7 +1136,7 @@ C_ZH_TASK_TEXT = {
             "T1_SC_code_understanding": "把 price 初始化为 0，是否会让未知商品按 0 元计入小计？",
             "T1_SC_output_debugging": "对于 ids={1,9}，编号 9 是否会被静默按 0 元处理？",
             "T1_SC_verification_testing": "哪个输入最能暴露未知编号问题？",
-            "T1_SC_responsibility": "如果未知编号被按 0 元收费，这段代码是否可以直接提交？",
+            "T1_SC_responsibility": "如果未知编号被按 0 元收费，这段代码(code)是否可以直接交付？",
         },
     },
     2: {
@@ -1149,9 +1149,9 @@ C_ZH_TASK_TEXT = {
             "把计数写入 output_path，并覆盖旧内容。",
         ],
         "questions": {
-            "Q6": "这份 AI 生成的 C 语言答案是否完全满足任务要求？",
-            "Q7": "这份 AI 生成的 C 语言答案是否可以直接提交？",
-            "Q8": "AI 代码会返回什么？",
+            "Q6": "这份人工智能(AI)生成的 C 语言代码(code)是否完全满足任务要求？",
+            "Q7": "这份人工智能(AI)生成的 C 语言代码(code)是否可以直接交付？",
+            "Q8": "这段代码(code)会返回什么？",
             "Q9": "根据任务要求，正确返回值应该是什么？",
             "Q10": "这份答案的问题包括哪一组？",
         },
@@ -1161,16 +1161,16 @@ C_ZH_TASK_TEXT = {
             "T2_SC_code_understanding": 'strcmp(line, "") 能否跳过被读取为 "\\n" 的空行？',
             "T2_SC_output_debugging": "这段代码是否会追加到旧输出后，而不是覆盖旧内容？",
             "T2_SC_verification_testing": "哪个输入最能测试空行处理？",
-            "T2_SC_responsibility": "如果旧输出会保留在文件里，这段代码是否可以直接提交？",
+            "T2_SC_responsibility": "如果旧输出会保留在文件里，这段代码(code)是否可以直接交付？",
         },
     },
     3: {
         "title": "C 任务 3：学生成绩报告",
         "requirements": ["根据学生 id，从成绩表中填充每个学生的成绩。", "如果某个学生 id 在成绩表中缺失，成绩应为 0。", "保持原始学生顺序。"],
         "questions": {
-            "Q11": "这份 AI 生成的 C 语言答案是否完全满足任务要求？",
-            "Q12": "这份 AI 生成的 C 语言答案是否可以直接提交？",
-            "Q13": "AI 代码会生成什么结果？",
+            "Q11": "这份人工智能(AI)生成的 C 语言代码(code)是否完全满足任务要求？",
+            "Q12": "这份人工智能(AI)生成的 C 语言代码(code)是否可以直接交付？",
+            "Q13": "这段代码(code)会生成什么结果？",
             "Q14": "根据任务要求，正确的成绩值应该是什么？",
             "Q15": "这份答案的主要问题是什么？",
         },
@@ -1180,9 +1180,9 @@ C_ZH_TASK_TEXT = {
         "title": "C 任务 4：排除哨兵值的数组平均值",
         "requirements": ["忽略值为 -1 的元素。", "以 double 返回有效值的平均数。", "如果没有有效值，返回 0.0。"],
         "questions": {
-            "Q16": "这份 AI 生成的 C 语言答案是否完全满足任务要求？",
-            "Q17": "这份 AI 生成的 C 语言答案是否可以直接提交？",
-            "Q18": "在普通 C 整数除法行为下，AI 代码会返回什么？",
+            "Q16": "这份人工智能(AI)生成的 C 语言代码(code)是否完全满足任务要求？",
+            "Q17": "这份人工智能(AI)生成的 C 语言代码(code)是否可以直接交付？",
+            "Q18": "按普通 C 语言整数除法规则，这段代码(code)会返回什么？",
             "Q19": "根据任务要求，正确返回值应该是什么？",
             "Q20": "这份答案的主要问题是什么？",
         },
@@ -1192,9 +1192,9 @@ C_ZH_TASK_TEXT = {
         "title": "C 任务 5：分类销售额汇总",
         "requirements": ["销售额计算为 price * quantity。", "按分类下标汇总销售额。", "累计前应设置每个分类的初始总额。"],
         "questions": {
-            "Q21": "这份 AI 生成的 C 语言答案是否完全满足任务要求？",
-            "Q22": "这份 AI 生成的 C 语言答案是否可以直接提交？",
-            "Q23": "AI 代码会生成哪些 totals？",
+            "Q21": "这份人工智能(AI)生成的 C 语言代码(code)是否完全满足任务要求？",
+            "Q22": "这份人工智能(AI)生成的 C 语言代码(code)是否可以直接交付？",
+            "Q23": "这段代码(code)会生成哪些 totals？",
             "Q24": "根据任务要求，正确的 totals 应该是什么？",
             "Q25": "这份答案的主要问题是什么？",
         },
@@ -1204,14 +1204,149 @@ C_ZH_TASK_TEXT = {
         "title": "C 任务 6：CSV 商品汇总",
         "requirements": ["每行格式为 product_id,units,price。", "如果商品编号未知，或 units/price 为负数，返回 0。", "计算 units * price。", "按分类汇总 totals，成功时返回 1。"],
         "questions": {
-            "Q26": "这份 AI 生成的 C 语言答案是否完全满足任务要求？",
-            "Q27": "这份 AI 生成的 C 语言答案是否可以直接提交？",
-            "Q28": "AI 代码会生成哪些 totals？",
+            "Q26": "这份人工智能(AI)生成的 C 语言代码(code)是否完全满足任务要求？",
+            "Q27": "这份人工智能(AI)生成的 C 语言代码(code)是否可以直接交付？",
+            "Q28": "这段代码(code)会生成哪些 totals？",
             "Q29": "根据任务要求，正确的 totals 应该是什么？",
             "Q30": "这份答案的问题包括哪一组？",
         },
         "contexts": {"Q28": "输入行是 1,2,10 和 2,3,5。ids={1,2}, cats={0,1}。"},
     },
+}
+
+AGENT_ZH_TASK_TEXT = {
+    1: {
+        "title": "智能体(agent)任务 1：检查商品查价结果",
+        "requirements": [
+            "用户目标：修改 calculate_total.c，让未知商品编号返回 -1。",
+            "如果是 VIP 订单，先打 9 折，再计算运费。",
+            "打折后小计大于 100 时免运费，否则加 8 元运费。",
+            "智能体(agent)在声称完成前，必须运行一个包含未知商品编号的测试。",
+        ],
+        "questions": {
+            "Q1": "智能体(agent)最后说“测试通过”，这个说法是否有运行记录支持？",
+            "Q2": "智能体(agent)是否真的验证了“未知商品编号应被处理”这个要求？",
+            "Q3": "修改后的代码(code)是否符合用户目标？",
+            "Q4": "如果 ids={1,9} 且 9 是未知商品编号，正确实现应该返回什么？",
+            "Q5": "这里最需要监督者发现的问题是什么？",
+        },
+    },
+    2: {
+        "title": "智能体(agent)任务 2：检查非空行计数结果",
+        "requirements": [
+            "用户目标：修改 count_lines.c，统计 input.txt 中的非空行数量。",
+            "只包含换行符的空白行不能计入数量。",
+            "把计数写入 output.txt 时应覆盖旧内容，而不是追加到旧内容后面。",
+            "智能体(agent)必须根据实际看到的输出，判断是否还需要继续修改。",
+        ],
+        "questions": {
+            "Q6": "智能体(agent)说“测试通过”，这个说法是否有观察结果支持？",
+            "Q7": "智能体(agent)是否完成了“覆盖写入”这个要求？",
+            "Q8": "对于输入 \"a\\n\\nb\\n\"，运行记录里智能体(agent)的代码(code)输出了什么？",
+            "Q9": "根据用户目标，正确计数应该是多少？",
+            "Q10": "监督者应该发现哪一类问题？",
+        },
+    },
+    3: {
+        "title": "智能体(agent)任务 3：检查学生成绩匹配结果",
+        "requirements": [
+            "用户目标：按学生 id 填入每个学生的成绩。",
+            "如果某个学生 id 没有成绩，应记为 0。",
+            "保持学生原来的顺序。",
+            "这道题本身是正确案例，用来检查监督者能否接受确实有效的智能体(agent)结果。",
+        ],
+        "questions": {
+            "Q11": "智能体(agent)的结论是否有观察结果支持？",
+            "Q12": "这个智能体(agent)交付结果是否可以直接提交？",
+            "Q13": "运行记录显示了什么？",
+            "Q14": "根据用户目标，Bob 缺失成绩时应该怎样处理？",
+            "Q15": "最合适的监督决定是什么？",
+        },
+    },
+    4: {
+        "title": "智能体(agent)任务 4：检查排除特殊值后的平均数",
+        "requirements": [
+            "用户目标：计算数组中有效数值的平均数。",
+            "特殊值 -1 必须被忽略。",
+            "返回 double 类型结果；如果没有有效值，返回 0.0。",
+            "智能体(agent)在声称成功前，必须查看具体测试输出。",
+        ],
+        "questions": {
+            "Q16": "智能体(agent)最后的结论是否有测试观察结果支持？",
+            "Q17": "智能体(agent)是否实现了“忽略 -1”这个要求？",
+            "Q18": "对于 arr={2,4,-1}，智能体(agent)的代码(code)输出了什么？",
+            "Q19": "根据用户目标，正确平均数应该是多少？",
+            "Q20": "监督者下一步应该要求什么？",
+        },
+    },
+    5: {
+        "title": "智能体(agent)任务 5：检查分类销售额汇总结果",
+        "requirements": [
+            "用户目标：计算 price * quantity，并按类别汇总总额。",
+            "累加前要先初始化每个类别的总额。",
+            "这道题本身是正确案例，用来检查监督者能否正确接受结果。",
+        ],
+        "questions": {
+            "Q21": "智能体(agent)最后的说法是否有运行流程支持？",
+            "Q22": "这个智能体(agent)交付结果是否可以直接提交？",
+            "Q23": "对于 prices={10,20,5}, qty={2,1,4}, cat={0,1,0}，观察到的 totals 是什么？",
+            "Q24": "根据用户目标，totals 应该是什么？",
+            "Q25": "最合适的监督决定是什么？",
+        },
+    },
+    6: {
+        "title": "智能体(agent)任务 6：检查销售汇总和异常数据处理",
+        "requirements": [
+            "用户目标：读取商品行，遇到未知商品或负数数据时拒绝，计算 units * price，并按类别汇总。",
+            "只要某一行无效，就应返回失败。",
+            "智能体(agent)不能只用正常数据测试就声称所有边界情况都处理好了。",
+        ],
+        "questions": {
+            "Q26": "智能体(agent)最后的结论是否完全有运行流程支持？",
+            "Q27": "这个智能体(agent)交付结果是否可以直接提交？",
+            "Q28": "对于 1,2,10 和 2,3,5 这两行，智能体(agent)的代码(code)生成了哪些 totals？",
+            "Q29": "根据用户目标，这两行的正确 totals 应该是什么？",
+            "Q30": "哪一个监督判断最准确？",
+        },
+    },
+}
+
+AGENT_OPTION_TEXT_ZH = {
+    "Yes": "是",
+    "No": "否",
+    "Not sure": "不确定",
+    "Can submit": "可以提交",
+    "Cannot submit": "不可以提交",
+    "Revised appropriately": "根据证据适当调整了",
+    "Ignored evidence": "忽视了证据",
+    "The agent used too many tests": "智能体(agent)用了太多测试",
+    "It treated an unknown id as price 0 and still claimed success": "它把未知编号按 0 元处理，却仍然声称成功",
+    "The code cannot compile": "代码(code)无法编译",
+    "There is no problem": "没有问题",
+    "Only the filename is wrong": "只是文件名错误",
+    "Blank-line handling is wrong and output is appended": "空行处理错误，并且输出被追加到旧内容后面",
+    "The agent never compiled": "智能体(agent)根本没有编译",
+    "Bob has 0 and Ana has 90, original order unchanged": "Bob 为 0，Ana 为 90，原顺序不变",
+    "Ana is moved before Bob": "Ana 被移动到 Bob 前面",
+    "Both scores become 90": "两人的成绩都变为 90",
+    "The program fails to run": "程序运行失败",
+    "Bob should receive 0": "Bob 应该记为 0",
+    "Bob should receive 90": "Bob 应该记为 90",
+    "Bob should be deleted": "Bob 应该被删除",
+    "The program should stop": "程序应该停止",
+    "Reject because every agent output is risky": "因为所有智能体(agent)输出都有风险，所以拒绝",
+    "Require unrelated refactoring": "要求做无关重构",
+    "Delete the test data": "删除测试数据",
+    "Allow submission because the trace supports correctness": "允许提交，因为运行流程支持它是正确的",
+    "Ignore -1, use valid count and double division, then retest": "忽略 -1，使用有效数量和 double 除法，然后重新测试",
+    "Only rename variables": "只是重命名变量",
+    "Reject because it uses arrays": "因为它使用数组，所以拒绝",
+    "Require a rewrite even though the trace is correct": "即使运行流程正确，也要求重写",
+    "Delete the output file": "删除输出文件",
+    "Allow submission; no issue is shown": "允许提交；没有看到问题",
+    "The agent used addition instead of multiplication and did not prove invalid-row handling": "智能体(agent)用了加法而不是乘法，也没有证明自己处理了无效数据行",
+    "Only totals initialization is wrong": "只是 totals 初始化错误",
+    "There is no issue": "没有问题",
 }
 
 C_OPTION_TEXT_ZH = {
@@ -1293,11 +1428,103 @@ COMMON_OPTION_TEXT_ZH = {
 }
 
 
+AGENT_TRACE_REPLACEMENTS_ZH = {
+    "Agent plan:": "智能体(agent)计划：",
+    "Agent action log:": "智能体(agent)操作记录：",
+    "Modified key code:": "修改后的关键代码(code)：",
+    "Step 1. Read calculate_total.c.": "步骤 1：读取 calculate_total.c。",
+    "Step 2. Find the price lookup loop.": "步骤 2：找到查找价格的循环。",
+    "Step 3. Add order total logic and run a sample test.": "步骤 3：添加订单总价逻辑，并运行一个样例测试。",
+    "Step 1. Read count_lines.c.": "步骤 1：读取 count_lines.c。",
+    "Step 2. Check current blank-line logic.": "步骤 2：检查当前空行处理逻辑。",
+    'Step 3. Run input "a\\n\\nb\\n".': '步骤 3：运行输入 "a\\n\\nb\\n"。',
+    "Step 4. Submit if output is 2.": "步骤 4：如果输出为 2，就提交。",
+    "Step 1. Read report.c and the score table format.": "步骤 1：读取 report.c 和成绩表格式。",
+    "Step 2. Match scores by student id.": "步骤 2：按学生 id 匹配成绩。",
+    "Step 3. Run a test with one missing score.": "步骤 3：运行一个有缺失成绩的测试。",
+    "Step 1. Read average.c.": "步骤 1：读取 average.c。",
+    "Step 2. Sum the array and divide by n.": "步骤 2：把数组全部相加，再除以 n。",
+    "Step 3. Run arr={2,4,-1}.": "步骤 3：运行 arr={2,4,-1}。",
+    "Step 1. Read revenue.c.": "步骤 1：读取 revenue.c。",
+    "Step 2. Initialize totals.": "步骤 2：初始化 totals。",
+    "Step 3. Accumulate price * quantity by category.": "步骤 3：按类别累加 price * quantity。",
+    "Step 4. Run a two-category sample.": "步骤 4：运行一个包含两个类别的样例。",
+    "Step 1. Read summarize.c.": "步骤 1：读取 summarize.c。",
+    "Step 2. Parse id, units, price.": "步骤 2：解析 id、units、price。",
+    "Step 3. Find category and update totals.": "步骤 3：找到类别并更新 totals。",
+    "Step 4. Run a normal two-row test.": "步骤 4：运行一个正常的两行数据测试。",
+    "[Read]": "[读取]",
+    "[Edit] Initializes price = 0 before searching price_ids.": "[修改] 在查找 price_ids 前，把 price 初始化为 0。",
+    "[Edit] Adds subtotal += price * qty[i].": "[修改] 添加 subtotal += price * qty[i]。",
+    "[Edit] Keeps if (strcmp(line, \"\") != 0) count++;": "[修改] 保留 if (strcmp(line, \"\") != 0) count++;。",
+    "[Edit] Opens output with fopen(output_path, \"a\").": "[修改] 用 fopen(output_path, \"a\") 打开输出文件，也就是追加写入。",
+    "[Edit] Sets each student score to 0 before lookup.": "[修改] 查找前先把每个学生成绩设为 0。",
+    "[Edit] Replaces the score when ids match.": "[修改] 当 id 匹配时替换成绩。",
+    "[Edit] Sums every element, including -1.": "[修改] 把每个元素都相加，包括 -1。",
+    "[Edit] Returns sum / n.": "[修改] 返回 sum / n。",
+    "[Edit] Sets totals[i] = 0 for all categories.": "[修改] 把所有类别的 totals[i] 设为 0。",
+    "[Edit] Adds prices[i] * qty[i] to totals[cat[i]].": "[修改] 把 prices[i] * qty[i] 加到 totals[cat[i]]。",
+    "[Edit] If id is found, adds units + price to totals[cat].": "[修改] 如果找到 id，就把 units + price 加到 totals[cat]。",
+    "[Edit] Unknown ids are silently skipped; negative units are not rejected.": "[修改] 未知 id 被悄悄跳过；负数 units 没有被拒绝。",
+    "[Run]": "[运行]",
+    "[Note]": "[说明]",
+    "[Observation] Program prints 28.00.": "[观察结果] 程序输出 28.00。",
+    "[Observation] output.txt contains appended value 3.": "[观察结果] output.txt 中出现了追加进去的数值 3。",
+    "[Observation] Bob remains first with score 0; Ana remains second with score 90.": "[观察结果] Bob 仍排第一且成绩为 0；Ana 仍排第二且成绩为 90。",
+    "[Observation] The program prints 1.000000.": "[观察结果] 程序输出 1.000000。",
+    "[Observation] totals[0]=40 and totals[1]=20.": "[观察结果] totals[0]=40，totals[1]=20。",
+    "[Observation] totals[0]=12 and totals[1]=8.": "[观察结果] totals[0]=12，totals[1]=8。",
+    "[Final] Test passed. Unknown products are handled and the code can be submitted.": "[最终结论] 测试通过。未知商品已处理，代码(code)可以提交。",
+    "[Final] Test passed. The code can be submitted.": "[最终结论] 测试通过。代码(code)可以提交。",
+    "[Final] The implementation matches the goal and can be submitted.": "[最终结论] 实现符合目标，可以提交。",
+    "[Final] The average function works correctly and can be submitted.": "[最终结论] 平均数函数工作正确，可以提交。",
+    "[Final] The implementation matches the requirement and can be submitted.": "[最终结论] 实现符合要求，可以提交。",
+    "[Final] Sales totals are correct and edge cases are handled.": "[最终结论] 销售额汇总正确，特殊情况也已处理。",
+    "EN:": "英文说明：",
+    "ZH:": "中文说明：",
+}
+
+
+def localized_agent_trace(trace: str) -> str:
+    localized = trace
+    for source, target in AGENT_TRACE_REPLACEMENTS_ZH.items():
+        localized = localized.replace(source, target)
+    return localized
+
+
 def localized_task(task_id: int, lang: str = "en", version: str = "python") -> dict:
     normalized_version = normalize_questionnaire_version(version)
     task = deepcopy(get_task(task_id, normalized_version))
     task["questionnaire_version"] = normalized_version
     if lang != "zh":
+        return task
+    if normalized_version == "agent":
+        zh = AGENT_ZH_TASK_TEXT.get(task_id, {})
+        task["title"] = zh.get("title", task["title"])
+        task["requirements"] = zh.get("requirements", task["requirements"])
+        task["code"] = localized_agent_trace(task["code"])
+        for question in task["questions"]:
+            qid = question["id"]
+            question["prompt"] = zh.get("questions", {}).get(qid, question["prompt"])
+            for option in question["options"]:
+                option["text"] = AGENT_OPTION_TEXT_ZH.get(option["text"], option["text"])
+        if task.get("supervision_card"):
+            for item in task["supervision_card"]:
+                item["prompt"] = {
+                    "factuality": "智能体(agent)的测试结果、错误分析和最终结论，是否都能从运行记录中直接看出来？",
+                    "action_feasibility": "智能体(agent)声称做过的文件修改、命令、测试或验证步骤，是否真的做了？",
+                    "goal_alignment": "最终交付物是否符合用户最初的编程目标，而不只是看起来像是合理的？",
+                    "side_effect": "智能体(agent)的操作是否可能覆盖文件、追加旧输出、删除有用数据，或给环境带来其他影响？",
+                    "efficiency": "智能体(agent)是否根据观察结果调整计划，还是忽视明显证据后过早停止？",
+                }.get(item["id"].split("_SC_", 1)[-1], item["prompt"])
+                item["dimension"] = {
+                    "Factuality": "事实核对能力",
+                    "Action Feasibility": "操作核对能力",
+                    "Goal Alignment": "目标一致性",
+                    "Side-effect Control": "副作用控制",
+                    "Efficiency Evaluation": "过程调整判断",
+                }.get(item["dimension"], item["dimension"])
+                item["options"] = [AGENT_OPTION_TEXT_ZH.get(option, option) for option in item["options"]]
         return task
     if normalized_version == "c":
         zh = C_ZH_TASK_TEXT.get(task_id, {})
@@ -1314,11 +1541,11 @@ def localized_task(task_id: int, lang: str = "en", version: str = "python") -> d
             for item in task["supervision_card"]:
                 item["prompt"] = zh.get("supervision", {}).get(item["id"], item["prompt"])
                 item["dimension"] = {
-                    "Problem Definition": "问题定义能力",
-                    "AI Code Understanding": "AI 代码理解能力",
-                    "AI Output Debugging": "AI 输出调试能力",
-                    "Verification and Testing": "验证与测试能力",
-                    "Responsibility and Supervision": "责任与监督能力",
+                    "Problem Definition": "理解任务要求",
+                    "AI Code Understanding": "理解人工智能(AI)代码(code)",
+                    "AI Output Debugging": "核对人工智能(AI)输出",
+                    "Verification and Testing": "验证与测试(testing)",
+                    "Responsibility and Supervision": "交付责任与监督",
                 }.get(item["dimension"], item["dimension"])
                 item["options"] = [C_OPTION_TEXT_ZH.get(option, option) for option in item["options"]]
         return task
@@ -1337,11 +1564,11 @@ def localized_task(task_id: int, lang: str = "en", version: str = "python") -> d
         for item in task["supervision_card"]:
             item["prompt"] = zh.get("supervision", {}).get(item["id"], item["prompt"])
             item["dimension"] = {
-                "Problem Definition": "问题定义能力",
-                "AI Code Understanding": "AI 代码理解能力",
-                "AI Output Debugging": "AI 输出调试能力",
-                "Verification and Testing": "验证与测试能力",
-                "Responsibility and Supervision": "责任与监督能力",
+                "Problem Definition": "理解任务要求",
+                "AI Code Understanding": "理解人工智能(AI)代码(code)",
+                "AI Output Debugging": "核对人工智能(AI)输出",
+                "Verification and Testing": "验证与测试(testing)",
+                "Responsibility and Supervision": "交付责任与监督",
             }.get(item["dimension"], item["dimension"])
             item["options"] = [COMMON_OPTION_TEXT_ZH.get(option, option) for option in item["options"]]
     return task
@@ -1354,7 +1581,7 @@ def posttest_schema(lang: str = "en") -> dict:
     return {
         "title": "AI 监督能力后测" if language == "zh" else "AI Supervision Competence Post-test",
         "intro": (
-            "请根据完成全部任务后的真实感受作答。本问卷用于了解你是否形成了监督 AI 输出的意识、策略和责任判断。后测不计入正式 task 总分。"
+            "请根据完成全部任务后的真实感受作答。这里想了解你是否形成了监督人工智能(AI)或智能体(agent)输出的意识、方法和责任判断。结束后小问卷不计入正式任务得分。"
             if language == "zh"
             else "Please answer based on your experience after completing all tasks. This post-test measures your mindset, strategies, and responsibility judgments when supervising AI outputs. It is not included in the formal task score."
         ),

@@ -84,10 +84,10 @@ def test_frontend_shows_research_notice_after_pretest_and_tracks_time():
     assert 'api("/api/session/start", { method: "POST"' in app_js
     assert "state.status = \"notice\";" in app_js
     assert "renderResearchNotice();" in app_js
-    assert "我已阅读并同意研究告知书与作答规则" in app_js
+    assert "我已阅读并同意研究说明与作答规则" in app_js
     assert "function updateTimer" in app_js
     assert "function renderTimeoutNotice" in app_js
-    assert "作答已超时，请重新作答" in app_js
+    assert "已超过 40 分钟，请重新开始" in app_js
     assert "function clearQuestionnaireLocalState" in app_js
     assert "function setOverallProgress" in app_js
 
@@ -114,10 +114,10 @@ def test_frontend_task_page_explains_how_to_answer_and_supervision_card_role():
     assert "taskSectionLabels" in app_js
     assert "supervisionIntro" in app_js
     assert "agentTrace" in app_js
-    assert "Agent运行流程" in app_js
+    assert "智能体(agent)运行流程 / Agent运行流程" in app_js
     assert 'task.questionnaire_version === "agent"' in app_js
     assert "正式问题" in app_js
-    assert "AI 生成的代码" in app_js
+    assert "人工智能(AI)生成的代码(code)" in app_js
 
 
 def test_frontend_scrolls_to_first_unanswered_required_group():
