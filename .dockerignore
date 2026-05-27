@@ -1,0 +1,11 @@
+.git
+.env
+node_modules
+dist
+tmp
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+*.sqlite
+questionnaire_app/data

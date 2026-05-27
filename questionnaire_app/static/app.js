@@ -6,6 +6,11 @@ const languageToggle = document.getElementById("languageToggle");
 const resetHomeButton = document.getElementById("resetHome");
 const networkStatus = document.getElementById("networkStatus");
 const topbar = document.querySelector(".topbar");
+const BASE_PATH = new URL(document.currentScript.src).pathname.replace(/\/app\.js$/, "");
+
+function withBasePath(path) {
+  return `${BASE_PATH}${path}`;
+}
 
 const i18n = {
   en: {
@@ -567,7 +572,7 @@ function setLanguage(lang) {
 }
 
 async function api(path, options = {}) {
-  const response = await fetch(path, {
+  const response = await fetch(withBasePath(path), {
     headers: { "Content-Type": "application/json", ...(options.headers || {}) },
     ...options,
   });

@@ -23,6 +23,23 @@ Admin export URL:
 http://127.0.0.1:8000/admin.html
 ```
 
+## Docker
+
+The Docker service is intended to sit behind the `ask_cn_ai` nginx container on
+the shared `ask_cn_ai_default` Docker network.
+
+```bash
+cd /data/question_for_data
+./start.sh up
+```
+
+Public URLs through nginx:
+
+```text
+http://xiaozhenxing.top/question/
+http://xiaozhenxing.top/question/admin
+```
+
 ## Behavior
 
 - Pretest is shared by both groups.

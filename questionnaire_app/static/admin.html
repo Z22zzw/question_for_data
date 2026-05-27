@@ -149,6 +149,13 @@ let pw = '';
 let sessions = [];
 let selectedSessionIds = new Set();
 let questionnaireSettings = {python: true, c: true, agent: true};
+const BASE_PATH = location.pathname
+  .replace(/\/admin(?:\.html)?\/?$/, '')
+  .replace(/\/$/, '');
+
+function withBasePath(path) {
+  return `${BASE_PATH}${path}`;
+}
 
 const ANSWER_KEY = {
   Q1:'B',Q2:'B',Q3:'B',Q4:'A',Q5:'B',Q6:'B',Q7:'B',Q8:'D',Q9:'A',Q10:'B',
@@ -159,7 +166,7 @@ const ANSWER_KEY = {
 async function api(path, opts = {}) {
   const sep = path.includes('?') ? '&' : '?';
   const version = document.getElementById('versionFilter')?.value || 'python';
-  const res = await fetch(path + sep + 'password=' + encodeURIComponent(pw) + '&version=' + encodeURIComponent(version), opts);
+  const res = await fetch(withBasePath(path) + sep + 'password=' + encodeURIComponent(pw) + '&version=' + encodeURIComponent(version), opts);
   const data = res.headers.get('content-type')?.includes('json') ? await res.json() : null;
   if (!res.ok) throw new Error(data?.detail || res.statusText);
   return data;
@@ -437,7 +444,7 @@ document.getElementById('bulkDeleteFilteredBtn').onclick = () => bulkDelete(visi
 
 document.getElementById('exportBtn').onclick = async () => {
   const version = document.getElementById('versionFilter').value;
-  const res = await fetch('/api/admin/export?password=' + encodeURIComponent(pw) + '&version=' + encodeURIComponent(version));
+  const res = await fetch(withBasePath('/api/admin/export') + '?password=' + encodeURIComponent(pw) + '&version=' + encodeURIComponent(version));
   if (!res.ok) { alert('导出失败'); return; }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);

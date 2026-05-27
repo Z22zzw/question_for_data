@@ -1,0 +1,31 @@
+services:
+  question-for-data:
+    build: .
+    image: question-for-data:local
+    container_name: question-for-data
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      - questionnaire-data:/app/questionnaire_app/data
+    networks:
+      ask-cn-ai:
+        aliases:
+          - question-for-data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/questionnaire-settings', timeout=5).read()"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  questionnaire-data:
+
+networks:
+  ask-cn-ai:
+    external: true
+    name: ask_cn_ai_default
