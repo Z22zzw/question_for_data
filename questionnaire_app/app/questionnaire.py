@@ -175,8 +175,15 @@ POSTTEST_QUESTIONS = [
 
 POSTTEST_FIELDS = [question["id"] for question in POSTTEST_QUESTIONS]
 
+PRETEST_IDENTITY_FIELDS = [
+    "class_name",
+    "student_name",
+    "student_id",
+]
+
 PRETEST_FIELDS = [
     "consent",
+    *PRETEST_IDENTITY_FIELDS,
     "questionnaire_version",
     "grade_year",
     "major",

@@ -14,7 +14,8 @@
     #loginPanel h2 { margin-bottom: 20px; }
     .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
     .field label { font-size: 13px; color: #555; }
-    .field input, .field select { padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+    .field input, .field select, .field textarea { padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+    .field textarea { min-height: 72px; resize: vertical; font-family: inherit; }
     .filter-field { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #555; }
     .filter-field select { padding: 7px 10px; border: 1px solid #ddd; border-radius: 6px; background: #fff; font-size: 13px; }
     .version-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 10px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; }
@@ -42,6 +43,8 @@
     .badge-abandoned { background: #fee2e2; color: #991b1b; }
     .badge-timeout { background: #ffe4e6; color: #9f1239; }
     .badge-invalid { background: #fef3c7; color: #92400e; }
+    .badge-manual { background: #e0f2fe; color: #075985; }
+    .badge-test { background: #edeff3; color: #374151; }
     .badge-a { background: #ede9fe; color: #5b21b6; }
     .badge-b { background: #fce7f3; color: #9d174d; }
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 100; overflow-y: auto; padding: 40px 16px; }
@@ -63,6 +66,8 @@
     .edit-row { display: flex; gap: 10px; align-items: center; margin-top: 16px; }
     .error { color: #dc3545; font-size: 13px; margin-top: 8px; }
     .flag-list { font-size: 12px; color: #92400e; }
+    .review-panel { padding: 14px; border: 1px solid #bae6fd; border-radius: 8px; background: #f0f9ff; }
+    .review-panel .field { margin-top: 14px; margin-bottom: 0; }
     input[type="checkbox"] { width: 14px; height: 14px; cursor: pointer; }
   </style>
 </head>
@@ -84,6 +89,7 @@
   <div class="toolbar">
     <button class="btn btn-primary" id="refreshBtn">刷新</button>
     <button class="btn btn-secondary" id="exportBtn">导出正常完成 Excel</button>
+    <button class="btn btn-secondary" id="statsPageBtn">统计看板</button>
     <label class="filter-field">
       题目版本
       <select id="versionFilter">
@@ -128,7 +134,7 @@
   <table id="sessionTable">
     <thead>
       <tr>
-        <th><input type="checkbox" id="selectAllVisible" /></th><th>ID</th><th>分组</th><th>状态</th><th>总分</th><th>后测均分</th><th>质量</th><th>总耗时</th><th>创建时间</th><th>完成时间</th><th>操作</th>
+        <th><input type="checkbox" id="selectAllVisible" /></th><th>ID</th><th>班级</th><th>姓名</th><th>学号</th><th>分组</th><th>状态</th><th>总分</th><th>后测均分</th><th>质量</th><th>总耗时</th><th>创建时间</th><th>完成时间</th><th>操作</th>
       </tr>
     </thead>
     <tbody id="sessionBody"></tbody>
@@ -162,6 +168,19 @@ const ANSWER_KEY = {
   Q11:'A',Q12:'A',Q13:'A',Q14:'A',Q15:'D',Q16:'B',Q17:'B',Q18:'B',Q19:'A',Q20:'B',
   Q21:'A',Q22:'A',Q23:'A',Q24:'A',Q25:'D',Q26:'B',Q27:'B',Q28:'B',Q29:'A',Q30:'A'
 };
+const COMPLETION_REASON_LABELS = {in_progress:'进行中',pending_posttest:'未提交后测',abandoned:'已删除',quality_failed:'质量异常',timeout:'超时'};
+
+function completionLabel(completion) {
+  return completion?.completion_bucket === 'normal_completed'
+    ? '正常完成'
+    : (COMPLETION_REASON_LABELS[completion?.incomplete_reason] || '未完成');
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[char]);
+}
 
 async function api(path, opts = {}) {
   const sep = path.includes('?') ? '&' : '?';
@@ -176,6 +195,7 @@ document.getElementById('loginBtn').onclick = async () => {
   pw = document.getElementById('pwInput').value;
   try {
     await api('/api/admin/sessions');
+    sessionStorage.setItem('questionnaire_admin_password', pw);
     document.getElementById('loginPanel').style.display = 'none';
     document.getElementById('mainPanel').style.display = 'block';
     document.getElementById('topbarInfo').textContent = '已登录';
@@ -256,21 +276,30 @@ function renderTable() {
   tbody.innerHTML = '';
   const visibleSessions = filteredSessions();
   const total = visibleSessions.length;
-  const normal = visibleSessions.filter(s => s.completion_bucket === 'normal_completed').length;
+  const normal = visibleSessions.filter(s => s.sample_included).length;
   const incomplete = visibleSessions.filter(s => s.completion_bucket === 'incomplete').length;
-  document.getElementById('statsLabel').textContent = `显示 ${total} 条 · 正常完成 ${normal} · 未完成/异常 ${incomplete} · 已选 ${selectedSessionIds.size}`;
+  const testCount = visibleSessions.filter(s => s.is_test).length;
+  document.getElementById('statsLabel').textContent = `显示 ${total} 条 · 正式正常完成 ${normal} · 未完成/异常 ${incomplete} · 测试 ${testCount} · 已选 ${selectedSessionIds.size}`;
   for (const s of visibleSessions) {
     const tr = document.createElement('tr');
     const statusBadge = {complete:'badge-complete',in_progress:'badge-progress',abandoned:'badge-abandoned',timeout:'badge-timeout'}[s.status] || '';
     const groupBadge = s.group === 'A' ? 'badge-a' : 'badge-b';
-    const qualityBadge = s.valid ? '' : '<span class="badge badge-invalid">无效</span>';
-    const reasonLabels = {in_progress:'进行中',pending_posttest:'未提交后测',abandoned:'已删除',quality_failed:'质量异常',timeout:'超时'};
-    const completionLabel = s.completion_bucket === 'normal_completed' ? '正常完成' : (reasonLabels[s.incomplete_reason] || '未完成');
+    const qualityBadge = s.valid
+      ? (s.completion_source === 'manual' ? '<span class="badge badge-manual">人工通过</span>' : '')
+      : s.is_test
+      ? '<span class="badge badge-test">测试不计入</span>'
+      : '<span class="badge badge-invalid">无效</span>';
+    const manualBadge = s.completion_source === 'manual' ? '<span class="badge badge-manual">人工复核</span> ' : '';
+    const testBadge = s.is_test ? '<span class="badge badge-test">测试</span> ' : '';
+    const participantLabel = s.is_test ? '测试' : `#${s.participant_id}`;
     tr.innerHTML = `
       <td><input type="checkbox" class="row-select" data-session-id="${s.session_id}" ${selectedSessionIds.has(s.session_id) ? 'checked' : ''} /></td>
-      <td><strong>#${s.participant_id}</strong><br><span style="font-size:11px;color:#999">${s.session_id.slice(0,8)}…</span></td>
+      <td><strong>${participantLabel}</strong><br><span style="font-size:11px;color:#999">${s.session_id.slice(0,8)}…</span></td>
+      <td>${escapeHtml(s.class_name || '-')}</td>
+      <td>${escapeHtml(s.student_name || '-')}</td>
+      <td>${escapeHtml(s.student_id || '-')}</td>
       <td><span class="badge ${groupBadge}">${s.group}</span></td>
-      <td><span class="badge ${statusBadge}">${completionLabel}</span></td>
+      <td>${testBadge}${manualBadge}<span class="badge ${statusBadge}">${completionLabel(s)}</span></td>
       <td>${s.total_score ?? '-'} / 30</td>
       <td>${s.post_agent_supervision_score ?? '-'}</td>
       <td>${qualityBadge}${s.quality_flags.length ? `<div class="flag-list">${s.quality_flags.join('<br>')}</div>` : '✓'}</td>
@@ -338,7 +367,7 @@ async function openDetail(id) {
   const data = await api('/api/admin/sessions/' + id);
   const s = data.session;
   const modal = document.getElementById('detailModal');
-  document.getElementById('modalTitle').textContent = `参与者 #${s.participant_id}`;
+  document.getElementById('modalTitle').textContent = s.is_test ? '测试问卷详情' : `参与者 #${s.participant_id}`;
 
   const kv = (k, v) => `<div class="kv"><div class="k">${k}</div><div class="v">${v ?? '-'}</div></div>`;
 
@@ -347,6 +376,10 @@ async function openDetail(id) {
   const answers = data.answers || {};
   const scores = data.scores || {};
   const posttestScores = data.posttest_scores || {};
+  const automaticCompletion = data.automatic_completion || {};
+  const completion = data.completion || {};
+  const qualityFlags = data.quality_flags || [];
+  const override = s.completion_override || 'auto';
 
   const answersHtml = Object.entries(ANSWER_KEY).map(([qid, correct]) => {
     const given = answers[qid];
@@ -358,6 +391,10 @@ async function openDetail(id) {
     <div class="section-title">基本信息</div>
     <div class="kv-grid">
       ${kv('会话 ID', s.id)}
+      ${kv('类型', s.is_test ? '测试问卷（不计入正式样本）' : '正式样本')}
+      ${kv('班级', pretest.class_name ? escapeHtml(pretest.class_name) : '-')}
+      ${kv('姓名', pretest.student_name ? escapeHtml(pretest.student_name) : '-')}
+      ${kv('学号', pretest.student_id ? escapeHtml(pretest.student_id) : '-')}
       ${kv('分组', s.group_name)}
       ${kv('状态', s.completed_at ? '完成' : s.abandoned_at ? '已删除' : '进行中')}
       ${kv('当前任务', s.current_task)}
@@ -368,7 +405,7 @@ async function openDetail(id) {
 
     <div class="section-title">前测信息</div>
     <div class="kv-grid">
-      ${Object.entries(pretest).filter(([k]) => k !== 'consent').map(([k,v]) => kv(k, v)).join('')}
+      ${Object.entries(pretest).filter(([k]) => !['consent', 'class_name', 'student_name', 'student_id'].includes(k)).map(([k,v]) => kv(k, v)).join('')}
     </div>
 
     <div class="section-title">得分</div>
@@ -378,6 +415,35 @@ async function openDetail(id) {
       ${kv('推理', scores.reasoning_score)}
       ${kv('错误识别', scores.error_identification_score)}
       ${kv('后测 AI supervision mindset 均分', posttestScores.post_agent_supervision_score)}
+    </div>
+
+    <div class="section-title">完成状态复核</div>
+    <div class="review-panel">
+      <div class="kv-grid">
+        ${kv('自动判定', completionLabel(automaticCompletion))}
+        ${kv('当前采用状态', `${completionLabel(completion)}${completion.completion_source === 'manual' ? '（人工复核）' : '（自动判定）'}`)}
+        ${kv('自动质量标记', qualityFlags.length ? qualityFlags.join('<br>') : '无')}
+        ${kv('人工修改时间', s.completion_override_updated_at?.slice(0,19).replace('T',' '))}
+      </div>
+      <div class="field">
+        <label for="editCompletionOverride">人工完成状态</label>
+        <select id="editCompletionOverride" ${s.abandoned_at ? 'disabled' : ''}>
+          <option value="auto" ${override==='auto'?'selected':''}>按自动判定</option>
+          <option value="normal_completed" ${override==='normal_completed'?'selected':''}>正常完成</option>
+          <option value="quality_failed" ${override==='quality_failed'?'selected':''}>质量异常</option>
+          <option value="timeout" ${override==='timeout'?'selected':''}>超时</option>
+          <option value="pending_posttest" ${override==='pending_posttest'?'selected':''}>未提交后测</option>
+          <option value="in_progress" ${override==='in_progress'?'selected':''}>进行中</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="editCompletionOverrideNote">复核备注</label>
+        <textarea id="editCompletionOverrideNote" placeholder="可填写人工判断依据" ${s.abandoned_at ? 'disabled' : ''}>${escapeHtml(s.completion_override_note)}</textarea>
+      </div>
+      <div class="edit-row">
+        <button class="btn btn-primary btn-sm" onclick="saveCompletionOverride('${s.id}')" ${s.abandoned_at ? 'disabled' : ''}>保存完成状态</button>
+        <span id="completionOverrideMsg" style="font-size:13px;color:#065f46">${s.abandoned_at ? '已删除数据请先恢复' : ''}</span>
+      </div>
     </div>
 
     <div class="section-title">答题详情（绿=正确 红=错误）</div>
@@ -417,6 +483,19 @@ async function saveGroup(id) {
   loadSessions();
 }
 
+async function saveCompletionOverride(id) {
+  const completion_override = document.getElementById('editCompletionOverride').value;
+  const completion_override_note = document.getElementById('editCompletionOverrideNote').value;
+  await api('/api/admin/sessions/' + id, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ completion_override, completion_override_note }),
+  });
+  await loadSessions();
+  await openDetail(id);
+  document.getElementById('completionOverrideMsg').textContent = '已保存';
+}
+
 function closeModal() {
   document.getElementById('detailModal').classList.remove('open');
 }
@@ -441,6 +520,10 @@ document.getElementById('selectAllVisible').onchange = e => {
 };
 document.getElementById('bulkDeleteSelectedBtn').onclick = () => bulkDelete([...selectedSessionIds], '选中');
 document.getElementById('bulkDeleteFilteredBtn').onclick = () => bulkDelete(visibleSessionIds(), '当前筛选结果');
+document.getElementById('statsPageBtn').onclick = () => {
+  sessionStorage.setItem('questionnaire_admin_password', pw);
+  window.open(withBasePath('/stats.html'), '_blank');
+};
 
 document.getElementById('exportBtn').onclick = async () => {
   const version = document.getElementById('versionFilter').value;

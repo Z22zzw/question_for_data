@@ -27,6 +27,7 @@
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100svh;
   overflow-x: hidden;
   background: var(--bg);
   color: var(--text);
@@ -180,10 +181,11 @@ h3 {
   position: fixed;
   inset: 0;
   z-index: 20;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  overflow-y: auto;
+  display: grid;
+  place-items: start center;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   padding: 30px 16px;
   background: rgba(20, 20, 19, 0.62);
 }
@@ -191,6 +193,12 @@ h3 {
 .modal-dialog {
   width: min(780px, calc(100vw - 32px));
   max-width: 100%;
+  max-height: calc(100vh - 60px);
+  max-height: calc(100dvh - 60px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   border-radius: 12px;
   background: var(--surface);
   box-shadow: rgba(0, 0, 0, 0.16) 0 24px 70px, 0 0 0 1px var(--line);
@@ -546,8 +554,26 @@ button:hover {
   }
 
   .topbar.is-floating {
-    position: fixed;
+    position: static;
     width: min(100% - 20px, 1120px);
+    transform: none;
+    box-shadow: none;
+  }
+
+  .topbar.is-hidden {
+    pointer-events: auto;
+    opacity: 1;
+    transform: none;
+  }
+
+  .modal-overlay {
+    padding: 10px;
+  }
+
+  .modal-dialog {
+    width: 100%;
+    max-height: calc(100vh - 20px);
+    max-height: calc(100dvh - 20px);
   }
 
   .modal-header {

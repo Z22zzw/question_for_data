@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>问卷统计看板</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { min-height: 100vh; background: #f4f6f8; color: #1f2937; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .topbar { display: flex; align-items: center; gap: 16px; padding: 18px 24px; background: #172033; color: #fff; }
+    .topbar h1 { font-size: 18px; font-weight: 700; }
+    .topbar .spacer { flex: 1; }
+    .topbar a { color: #dbeafe; text-decoration: none; font-size: 13px; }
+    main { width: min(1180px, calc(100% - 32px)); margin: 24px auto 48px; }
+    .login { max-width: 380px; margin: 80px auto; background: #fff; border-radius: 10px; padding: 28px; box-shadow: 0 8px 28px rgba(15,23,42,.08); }
+    .login h2 { margin-bottom: 16px; font-size: 20px; }
+    .field { display: grid; gap: 6px; margin-bottom: 14px; color: #526070; font-size: 13px; }
+    input { min-height: 42px; border: 1px solid #d8dee8; border-radius: 7px; padding: 8px 10px; font: inherit; }
+    button { min-height: 42px; border: 0; border-radius: 7px; padding: 0 16px; font: inherit; font-weight: 700; cursor: pointer; }
+    .primary { background: #172033; color: #fff; }
+    .secondary { background: #e9eef5; color: #172033; }
+    .error { margin-top: 10px; color: #b91c1c; font-size: 13px; }
+    .hidden { display: none; }
+    .summary-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+    .metric { background: #fff; border: 1px solid #e5eaf2; border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(15,23,42,.04); }
+    .metric .label { color: #64748b; font-size: 12px; font-weight: 700; }
+    .metric .value { margin-top: 8px; color: #111827; font-size: 26px; font-weight: 800; }
+    .section { margin-top: 18px; background: #fff; border: 1px solid #e5eaf2; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(15,23,42,.04); }
+    .section-header { display: flex; align-items: center; gap: 12px; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid #edf1f7; }
+    .section-header h2 { font-size: 16px; }
+    .section-header p { color: #64748b; font-size: 13px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #f8fafc; color: #526070; padding: 11px 12px; text-align: left; white-space: nowrap; border-bottom: 1px solid #e5eaf2; }
+    td { padding: 12px; border-bottom: 1px solid #f1f4f8; vertical-align: middle; }
+    tr:last-child td { border-bottom: 0; }
+    .version-name { font-weight: 800; color: #111827; }
+    .muted { color: #64748b; }
+    .identity-cell { min-width: 96px; font-weight: 700; color: #111827; }
+    .badge { display: inline-flex; align-items: center; min-width: 28px; justify-content: center; border-radius: 999px; padding: 3px 9px; font-size: 12px; font-weight: 800; }
+    .badge-a { background: #e0f2fe; color: #075985; }
+    .badge-b { background: #fae8ff; color: #86198f; }
+    .score-cell { min-width: 170px; }
+    .score-line { display: grid; grid-template-columns: 54px 1fr; gap: 10px; align-items: center; }
+    .score-value { font-weight: 800; color: #111827; }
+    .bar { height: 9px; overflow: hidden; border-radius: 999px; background: #edf1f7; }
+    .bar span { display: block; height: 100%; width: var(--w, 0%); background: linear-gradient(90deg, #2563eb, #14b8a6); }
+    .empty { padding: 18px; color: #64748b; font-size: 13px; }
+    .actions { display: flex; align-items: center; gap: 10px; }
+    @media (max-width: 760px) {
+      .topbar { align-items: flex-start; flex-direction: column; }
+      main { width: min(100% - 20px, 1180px); margin-top: 14px; }
+      .summary-strip { grid-template-columns: 1fr 1fr; }
+      .section-header { display: grid; }
+      .actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>问卷统计看板</h1>
+    <span class="spacer"></span>
+    <a id="adminLink" href="admin.html">返回管理后台</a>
+  </div>
+
+  <main>
+    <section class="login" id="loginPanel">
+      <h2>管理员登录</h2>
+      <div class="field">
+        <label for="pwInput">管理员密码</label>
+        <input id="pwInput" type="password" autocomplete="current-password" />
+      </div>
+      <button class="primary" id="loginBtn" style="width:100%">查看统计</button>
+      <p class="error" id="loginError"></p>
+    </section>
+
+    <section id="statsPanel" class="hidden">
+      <div class="summary-strip">
+        <div class="metric"><div class="label">统计口径</div><div class="value">正常完成</div></div>
+        <div class="metric"><div class="label">有效样本</div><div class="value" id="sampleCount">0</div></div>
+        <div class="metric"><div class="label">平均总分</div><div class="value" id="overallAverage">-</div></div>
+        <div class="metric"><div class="label">问卷版本</div><div class="value" id="versionCount">0</div></div>
+      </div>
+
+      <section class="section">
+        <div class="section-header">
+          <div>
+            <h2>各问卷版本平均分</h2>
+            <p>按正常完成样本计算，正式题总分满分 30 分。</p>
+          </div>
+          <div class="actions">
+            <button class="secondary" id="refreshBtn">刷新</button>
+            <button class="secondary" id="logoutBtn">退出</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>问卷</th>
+                <th>样本数</th>
+                <th>正式总分均分</th>
+                <th>可交付性</th>
+                <th>推理</th>
+                <th>错误识别</th>
+                <th>后测均分</th>
+              </tr>
+            </thead>
+            <tbody id="versionBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <div>
+            <h2>A/B 组平均分</h2>
+            <p>每个问卷版本内分别展示 A 组和 B 组的均分。</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>问卷</th>
+                <th>组别</th>
+                <th>样本数</th>
+                <th>正式总分均分</th>
+                <th>可交付性</th>
+                <th>推理</th>
+                <th>错误识别</th>
+                <th>后测均分</th>
+              </tr>
+            </thead>
+            <tbody id="groupBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <div>
+            <h2>正常完成样本明细</h2>
+            <p>按正常完成样本展示班级、姓名、学号和得分。</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>问卷</th>
+                <th>ID</th>
+                <th>班级</th>
+                <th>姓名</th>
+                <th>学号</th>
+                <th>组别</th>
+                <th>正式总分</th>
+                <th>后测均分</th>
+              </tr>
+            </thead>
+            <tbody id="sampleBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    let pw = sessionStorage.getItem('questionnaire_admin_password') || '';
+    const BASE_PATH = location.pathname
+      .replace(/\/stats(?:\.html)?\/?$/, '')
+      .replace(/\/$/, '');
+
+    function withBasePath(path) {
+      return `${BASE_PATH}${path}`;
+    }
+
+    document.getElementById('adminLink').href = withBasePath('/admin.html');
+    document.getElementById('pwInput').value = pw;
+
+    async function api(path) {
+      const sep = path.includes('?') ? '&' : '?';
+      const res = await fetch(withBasePath(path) + sep + 'password=' + encodeURIComponent(pw));
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.detail || res.statusText);
+      return data;
+    }
+
+    function formatScore(value, max = 30) {
+      return value == null ? '-' : `${Number(value).toFixed(2)} / ${max}`;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      })[char]);
+    }
+
+    function barCell(value, max = 30) {
+      const width = value == null ? 0 : Math.max(0, Math.min(100, value / max * 100));
+      return `
+        <div class="score-cell">
+          <div class="score-line">
+            <span class="score-value">${formatScore(value, max)}</span>
+            <span class="bar"><span style="--w:${width}%"></span></span>
+          </div>
+        </div>
+      `;
+    }
+
+    function plain(value, digits = 2) {
+      return value == null ? '-' : Number(value).toFixed(digits);
+    }
+
+    function renderStats(data) {
+      const versions = data.versions || [];
+      const groups = data.groups || [];
+      const samples = data.samples || [];
+      const totalSamples = versions.reduce((sum, row) => sum + row.sample_count, 0);
+      const weightedScore = versions.reduce((sum, row) => sum + ((row.average_total_score || 0) * row.sample_count), 0);
+
+      document.getElementById('sampleCount').textContent = totalSamples;
+      document.getElementById('overallAverage').textContent = totalSamples ? `${(weightedScore / totalSamples).toFixed(2)} / 30` : '-';
+      document.getElementById('versionCount').textContent = versions.length;
+
+      document.getElementById('versionBody').innerHTML = versions.length ? versions.map(row => `
+        <tr>
+          <td><div class="version-name">${row.label}</div><div class="muted">${row.version}</div></td>
+          <td>${row.sample_count}</td>
+          <td>${barCell(row.average_total_score, data.score_max)}</td>
+          <td>${plain(row.average_deliverability_score)}</td>
+          <td>${plain(row.average_reasoning_score)}</td>
+          <td>${plain(row.average_error_identification_score)}</td>
+          <td>${formatScore(row.average_post_agent_supervision_score, data.posttest_score_max)}</td>
+        </tr>
+      `).join('') : `<tr><td colspan="7" class="empty">暂无可统计数据</td></tr>`;
+
+      document.getElementById('groupBody').innerHTML = groups.length ? groups.map(row => `
+        <tr>
+          <td><div class="version-name">${row.label}</div><div class="muted">${row.version}</div></td>
+          <td><span class="badge ${row.group === 'A' ? 'badge-a' : 'badge-b'}">${row.group}</span></td>
+          <td>${row.sample_count}</td>
+          <td>${barCell(row.average_total_score, data.score_max)}</td>
+          <td>${plain(row.average_deliverability_score)}</td>
+          <td>${plain(row.average_reasoning_score)}</td>
+          <td>${plain(row.average_error_identification_score)}</td>
+          <td>${formatScore(row.average_post_agent_supervision_score, data.posttest_score_max)}</td>
+        </tr>
+      `).join('') : `<tr><td colspan="8" class="empty">暂无可统计数据</td></tr>`;
+
+      document.getElementById('sampleBody').innerHTML = samples.length ? samples.map(row => `
+        <tr>
+          <td><div class="version-name">${escapeHtml(row.label)}</div><div class="muted">${escapeHtml(row.version)}</div></td>
+          <td>#${row.participant_id}</td>
+          <td><div class="identity-cell">${escapeHtml(row.class_name || '-')}</div></td>
+          <td><div class="identity-cell">${escapeHtml(row.student_name || '-')}</div></td>
+          <td><div class="identity-cell">${escapeHtml(row.student_id || '-')}</div></td>
+          <td><span class="badge ${row.group === 'A' ? 'badge-a' : 'badge-b'}">${row.group}</span></td>
+          <td>${formatScore(row.total_score, data.score_max)}</td>
+          <td>${formatScore(row.post_agent_supervision_score, data.posttest_score_max)}</td>
+        </tr>
+      `).join('') : `<tr><td colspan="8" class="empty">暂无可统计数据</td></tr>`;
+    }
+
+    async function loadStats() {
+      const data = await api('/api/admin/stats');
+      sessionStorage.setItem('questionnaire_admin_password', pw);
+      document.getElementById('loginPanel').classList.add('hidden');
+      document.getElementById('statsPanel').classList.remove('hidden');
+      renderStats(data);
+    }
+
+    document.getElementById('loginBtn').onclick = async () => {
+      pw = document.getElementById('pwInput').value;
+      try {
+        await loadStats();
+        document.getElementById('loginError').textContent = '';
+      } catch {
+        document.getElementById('loginError').textContent = '密码错误或统计数据读取失败';
+      }
+    };
+    document.getElementById('pwInput').addEventListener('keydown', event => {
+      if (event.key === 'Enter') document.getElementById('loginBtn').click();
+    });
+    document.getElementById('refreshBtn').onclick = loadStats;
+    document.getElementById('logoutBtn').onclick = () => {
+      sessionStorage.removeItem('questionnaire_admin_password');
+      pw = '';
+      document.getElementById('pwInput').value = '';
+      document.getElementById('statsPanel').classList.add('hidden');
+      document.getElementById('loginPanel').classList.remove('hidden');
+    };
+
+    if (pw) loadStats().catch(() => {
+      sessionStorage.removeItem('questionnaire_admin_password');
+      document.getElementById('loginPanel').classList.remove('hidden');
+    });
+  </script>
+</body>
+</html>

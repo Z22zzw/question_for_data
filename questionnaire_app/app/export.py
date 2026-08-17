@@ -5,29 +5,40 @@ from io import BytesIO
 from openpyxl import Workbook
 
 from .database import decode_json, seconds_between, seconds_to_hms
-from .questionnaire import ANSWER_KEY, POSTTEST_FIELDS, PRETEST_FIELDS, SUPERVISION_KEY
+from .questionnaire import ANSWER_KEY, POSTTEST_FIELDS, PRETEST_FIELDS, PRETEST_IDENTITY_FIELDS, SUPERVISION_KEY
 from .scoring import score_answers, score_posttest, score_supervision
 
 
 def pretest_fields_for_export(version: str) -> list[str]:
+    excluded = set(PRETEST_IDENTITY_FIELDS)
     return [
         field
         for field in PRETEST_FIELDS
-        if version == "python" or field != "numpy_familiarity"
+        if field not in excluded and (version == "python" or field != "numpy_familiarity")
     ]
+
+
+def pretest_header_for_export(field: str, version: str) -> str:
+    if version == "c" and field == "python_familiarity":
+        return "c_language_familiarity"
+    return field
 
 
 def build_export_workbook(rows: list[dict], version: str = "python") -> bytes:
     pretest_fields = pretest_fields_for_export(version)
+    pretest_headers = [pretest_header_for_export(field, version) for field in pretest_fields]
     headers = [
         "session_id",
         "participant_id",
         "group",
+        "completion_override",
+        "completion_override_note",
+        "completion_override_updated_at",
     ]
     for task_id in range(1, 7):
         headers.append(f"task{task_id}_duration_hms")
     headers.append("total_duration_hms")
-    headers.extend(pretest_fields)
+    headers.extend(pretest_headers)
     headers.extend(POSTTEST_FIELDS)
     headers.append("post_agent_supervision_score")
     headers.extend(ANSWER_KEY.keys())
@@ -67,6 +78,9 @@ def build_export_workbook(rows: list[dict], version: str = "python") -> bytes:
             session["id"],
             session["participant_id"],
             session["group_name"],
+            session["completion_override"],
+            session["completion_override_note"],
+            session["completion_override_updated_at"],
         ]
         for task_id in range(1, 7):
             start = row["starts"].get(task_id)

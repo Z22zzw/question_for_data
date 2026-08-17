@@ -10,17 +10,18 @@ from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .database import Database, decode_json, seconds_between, seconds_to_hms
+from .database import Database, decode_json, is_test_pretest, seconds_between, seconds_to_hms
 from .export import build_export_workbook
 from .questionnaire import (
     POSTTEST_FIELDS,
     PRETEST_FIELDS,
+    PRETEST_IDENTITY_FIELDS,
     localized_task,
     normalize_questionnaire_version,
     posttest_schema,
     task_question_ids,
 )
-from .scoring import check_response_pattern, check_timing, score_answers, score_posttest, score_supervision
+from .scoring import check_timing, score_answers, score_posttest, score_supervision
 from .settings import QuestionnaireSettings
 
 SESSION_COOKIE_NAME = "questionnaire_session"
@@ -32,6 +33,9 @@ QUESTIONNAIRE_TIME_LIMIT_SECONDS = 40 * 60
 class PretestPayload(BaseModel):
     consent: str
     questionnaire_version: str = "python"
+    class_name: str
+    student_name: str
+    student_id: str
     grade_year: str
     major: str
     programming_experience_years: str
@@ -44,6 +48,7 @@ class PretestPayload(BaseModel):
 
 class AgreementPayload(BaseModel):
     agreement: str
+    test_group: str | None = None
 
 
 class TaskPayload(BaseModel):
@@ -166,6 +171,9 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
             for field in pretest_fields_for_version(version)
         )
 
+    def is_test_session(session: dict[str, Any]) -> bool:
+        return bool(session.get("is_test")) or is_test_pretest(decode_json(session.get("pretest_json")))
+
     def elapsed_seconds_for_session(session: dict[str, Any]) -> int:
         from datetime import datetime, timezone
 
@@ -209,6 +217,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
             return {
                 "status": "timeout",
                 "participant_id": session_dict["participant_id"],
+                "is_test": is_test_session(session_dict),
                 "next_task": None,
                 "next_stage": None,
                 "valid": False,
@@ -227,19 +236,9 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         pretest_ready = row["session"]["current_task"] == 0 and not notice_ready
         complete = bool(row["session"]["completed_at"])
 
-        # Compute per-task durations and total duration for quality checks
-        task_durations: dict[int, int | None] = {}
-        for task_id in range(1, 7):
-            start_row = row["starts"].get(task_id)
-            resp = next((r for r in row["responses"] if r["task_id"] == task_id), None)
-            task_durations[task_id] = seconds_between(
-                start_row["started_at"] if start_row else None,
-                resp["submitted_at"] if resp else None,
-            )
         total_seconds = seconds_between(row["session"]["created_at"], row["session"]["completed_at"])
-        timing_flags = check_timing(task_durations, total_seconds)
-        pattern_flags = check_response_pattern(answers) if answers else []
-        quality_flags = timing_flags + pattern_flags
+        timing_flags = check_timing({}, total_seconds)
+        quality_flags = timing_flags
         status = (
             "complete"
             if complete
@@ -266,6 +265,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         return {
             "status": status,
             "participant_id": row["session"]["participant_id"],
+            "is_test": is_test_session(session_dict),
             "next_task": None if row["session"]["current_task"] == 0 or row["session"]["current_task"] > 6 else row["session"]["current_task"],
             "next_stage": next_stage,
             "scores": {key: value for key, value in formal.items() if key != "per_question"},
@@ -277,26 +277,15 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         }
 
     def quality_flags_for_row(row: dict[str, Any]) -> list[str]:
-        answers: dict[str, str] = {}
-        for response in row["responses"]:
-            answers.update(decode_json(response["answers_json"]))
-        task_durations = {}
-        for task_id in range(1, 7):
-            start_row = row["starts"].get(task_id)
-            response = next((r for r in row["responses"] if r["task_id"] == task_id), None)
-            task_durations[task_id] = seconds_between(
-                start_row["started_at"] if start_row else None,
-                response["submitted_at"] if response else None,
-            )
         session = row["session"]
         total_seconds = seconds_between(session["created_at"], session["completed_at"])
-        return check_timing(task_durations, total_seconds) + (check_response_pattern(answers) if answers else [])
+        return check_timing({}, total_seconds)
 
-    def completion_metadata(session: dict[str, Any], quality_flags: list[str]) -> dict[str, str | None]:
-        if session["timeout_at"]:
-            return {"completion_bucket": "incomplete", "incomplete_reason": "timeout"}
+    def automatic_completion_metadata(session: dict[str, Any], quality_flags: list[str]) -> dict[str, str | None]:
         if session["abandoned_at"]:
             return {"completion_bucket": "incomplete", "incomplete_reason": "abandoned"}
+        if session["timeout_at"]:
+            return {"completion_bucket": "incomplete", "incomplete_reason": "timeout"}
         if session["completed_at"] and not quality_flags:
             return {"completion_bucket": "normal_completed", "incomplete_reason": None}
         if session["completed_at"]:
@@ -304,6 +293,94 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         if session["current_task"] > 6:
             return {"completion_bucket": "incomplete", "incomplete_reason": "pending_posttest"}
         return {"completion_bucket": "incomplete", "incomplete_reason": "in_progress"}
+
+    def completion_metadata(session: dict[str, Any], quality_flags: list[str]) -> dict[str, str | None]:
+        automatic = automatic_completion_metadata(session, quality_flags)
+        if automatic["incomplete_reason"] == "abandoned":
+            return {**automatic, "completion_source": "auto"}
+        override = session["completion_override"]
+        if not override:
+            return {**automatic, "completion_source": "auto"}
+        if override == "normal_completed":
+            return {
+                "completion_bucket": "normal_completed",
+                "incomplete_reason": None,
+                "completion_source": "manual",
+            }
+        return {
+            "completion_bucket": "incomplete",
+            "incomplete_reason": override,
+            "completion_source": "manual",
+        }
+
+    def average(values: list[float | int | None]) -> float | None:
+        numeric = [value for value in values if value is not None]
+        return round(sum(numeric) / len(numeric), 2) if numeric else None
+
+    def scored_stats_row(row: dict[str, Any]) -> dict[str, Any]:
+        answers: dict[str, str] = {}
+        for response in row["responses"]:
+            answers.update(decode_json(response["answers_json"]))
+        scores = score_answers(answers)
+        posttest_scores = score_posttest(decode_json(row["session"]["posttest_json"]))
+        pretest = decode_json(row["session"]["pretest_json"])
+        return {
+            "session_id": row["session"]["id"],
+            "participant_id": row["session"]["participant_id"],
+            "is_test": is_test_session(dict(row["session"])),
+            "group": row["session"]["group_name"],
+            "class_name": pretest.get("class_name"),
+            "student_name": pretest.get("student_name"),
+            "student_id": pretest.get("student_id"),
+            "total_score": scores["total_score"],
+            "deliverability_score": scores["deliverability_score"],
+            "reasoning_score": scores["reasoning_score"],
+            "error_identification_score": scores["error_identification_score"],
+            "post_agent_supervision_score": posttest_scores["post_agent_supervision_score"],
+        }
+
+    def stats_summary_for_version(version: str, db: Database) -> dict[str, Any]:
+        rows = [row for row in db.all_rows() if not is_test_session(dict(row["session"]))]
+        completed_rows = [row for row in rows if row["session"]["completed_at"]]
+        normal_rows = [
+            row
+            for row in rows
+            if completion_metadata(dict(row["session"]), quality_flags_for_row(row))["completion_bucket"]
+            == "normal_completed"
+        ]
+        scored_rows = [scored_stats_row(row) for row in normal_rows]
+        group_rows: list[dict[str, Any]] = []
+        for group in ("A", "B"):
+            group_scored = [row for row in scored_rows if row["group"] == group]
+            group_rows.append({
+                "version": version,
+                "group": group,
+                "sample_count": len(group_scored),
+                "average_total_score": average([row["total_score"] for row in group_scored]),
+                "average_deliverability_score": average([row["deliverability_score"] for row in group_scored]),
+                "average_reasoning_score": average([row["reasoning_score"] for row in group_scored]),
+                "average_error_identification_score": average([row["error_identification_score"] for row in group_scored]),
+                "average_post_agent_supervision_score": average([row["post_agent_supervision_score"] for row in group_scored]),
+            })
+        return {
+            "version": version,
+            "sample_count": len(scored_rows),
+            "completed_count": len(completed_rows),
+            "normal_completed_count": len(scored_rows),
+            "average_total_score": average([row["total_score"] for row in scored_rows]),
+            "average_deliverability_score": average([row["deliverability_score"] for row in scored_rows]),
+            "average_reasoning_score": average([row["reasoning_score"] for row in scored_rows]),
+            "average_error_identification_score": average([row["error_identification_score"] for row in scored_rows]),
+            "average_post_agent_supervision_score": average([row["post_agent_supervision_score"] for row in scored_rows]),
+            "groups": group_rows,
+            "samples": [
+                {
+                    "version": version,
+                    **row,
+                }
+                for row in scored_rows
+            ],
+        }
 
     @app.get("/api/questionnaire-settings")
     def public_questionnaire_settings() -> dict[str, Any]:
@@ -381,10 +458,18 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         session = db.get_session(session_id)
         if not session or session["abandoned_at"]:
             raise HTTPException(status_code=401, detail="No active session")
-        if not has_submitted_pretest(dict(session)):
+        session_dict = dict(session)
+        test_mode = is_test_session(session_dict)
+        if payload.test_group is not None and payload.test_group not in ("A", "B"):
+            raise HTTPException(status_code=400, detail="Test group must be A or B")
+        if payload.test_group is not None and not test_mode:
+            raise HTTPException(status_code=400, detail="Group choice is only available for test questionnaire")
+        if test_mode and payload.test_group is None:
+            raise HTTPException(status_code=400, detail="Test group must be A or B")
+        if not has_submitted_pretest(session_dict):
             raise HTTPException(status_code=409, detail="Pretest is required before research notice agreement")
         try:
-            created = db.start_session(session_id, payload.agreement)
+            created = db.start_session(session_id, payload.agreement, payload.test_group)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
@@ -406,6 +491,9 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         version = normalize_version_or_400(pretest.get("questionnaire_version"))
         require_enabled_version(version)
         pretest["questionnaire_version"] = version
+        for field in PRETEST_IDENTITY_FIELDS:
+            pretest[field] = pretest[field].strip()
+        is_test = is_test_pretest(pretest)
         db = dbs[version]
         if version != "python":
             pretest.pop("numpy_familiarity", None)
@@ -415,38 +503,42 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         if pretest["consent"] != "I agree":
             raise HTTPException(status_code=400, detail="Consent is required")
         if not session_id:
-            saved = db.create_session(pretest)
+            saved = db.create_session(pretest, is_test)
             set_session_cookie(response, saved["session_id"], version)
             return {
                 "participant_id": saved["participant_id"],
+                "is_test": is_test,
                 "next_task": saved["next_task"],
                 "next_stage": saved["next_stage"],
             }
         session = db.get_session(session_id)
         if not session or session["abandoned_at"]:
-            saved = db.create_session(pretest)
+            saved = db.create_session(pretest, is_test)
             set_session_cookie(response, saved["session_id"], version)
             return {
                 "participant_id": saved["participant_id"],
+                "is_test": is_test,
                 "next_task": saved["next_task"],
                 "next_stage": saved["next_stage"],
             }
         if ensure_not_timed_out(session, db):
             raise HTTPException(status_code=410, detail="Session timed out. Please restart the questionnaire.")
         if session["current_task"] != 0:
-            saved = db.create_session(pretest)
+            saved = db.create_session(pretest, is_test)
             set_session_cookie(response, saved["session_id"], version)
             return {
                 "participant_id": saved["participant_id"],
+                "is_test": is_test,
                 "next_task": saved["next_task"],
                 "next_stage": saved["next_stage"],
             }
         try:
-            saved = db.save_pretest(session_id, pretest)
+            saved = db.save_pretest(session_id, pretest, is_test)
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         return {
-            "participant_id": session["participant_id"],
+            "participant_id": saved["participant_id"],
+            "is_test": is_test,
             "next_task": saved["next_task"],
             "next_stage": saved["next_stage"],
         }
@@ -553,7 +645,8 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         normal_completed_rows = [
             row
             for row in db.all_rows()
-            if completion_metadata(dict(row["session"]), quality_flags_for_row(row))["completion_bucket"]
+            if not is_test_session(dict(row["session"]))
+            and completion_metadata(dict(row["session"]), quality_flags_for_row(row))["completion_bucket"]
             == "normal_completed"
         ]
         content = build_export_workbook(normal_completed_rows, normalized)
@@ -576,6 +669,7 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
                 ensure_not_timed_out(s, db)
                 row = db.admin_get_session(s["id"])
                 s = row["session"]
+            pretest = decode_json(s["pretest_json"])
             answers: dict[str, str] = {}
             for r in row["responses"]:
                 answers.update(decode_json(r["answers_json"]))
@@ -583,10 +677,16 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
             posttest_scores = score_posttest(decode_json(s["posttest_json"]))
             flags = quality_flags_for_row(row)
             completion = completion_metadata(s, flags)
+            automatic_completion = automatic_completion_metadata(s, flags)
+            test_mode = is_test_session(s)
             result.append({
                 "session_id": s["id"],
                 "participant_id": s["participant_id"],
                 "questionnaire_version": normalized,
+                "is_test": test_mode,
+                "class_name": pretest.get("class_name"),
+                "student_name": pretest.get("student_name"),
+                "student_id": pretest.get("student_id"),
                 "group": s["group_name"],
                 "status": "abandoned" if s["abandoned_at"] else "timeout" if s["timeout_at"] else "complete" if s["completed_at"] else "in_progress",
                 "current_task": s["current_task"],
@@ -595,12 +695,51 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
                 "abandoned_at": s["abandoned_at"],
                 "total_score": scores["total_score"],
                 "post_agent_supervision_score": posttest_scores["post_agent_supervision_score"],
-                "valid": len(flags) == 0,
+                "valid": completion["completion_bucket"] == "normal_completed" and not test_mode,
+                "sample_included": completion["completion_bucket"] == "normal_completed" and not test_mode,
+                "automatic_valid": automatic_completion["completion_bucket"] == "normal_completed",
                 "quality_flags": flags,
+                "completion_override": s["completion_override"],
+                "completion_override_note": s["completion_override_note"],
+                "completion_override_updated_at": s["completion_override_updated_at"],
+                "automatic_completion_bucket": automatic_completion["completion_bucket"],
+                "automatic_incomplete_reason": automatic_completion["incomplete_reason"],
                 "total_duration_hms": seconds_to_hms(elapsed_seconds_for_session(s)),
                 **completion,
             })
         return result
+
+    @app.get("/api/admin/stats")
+    def admin_stats(password: str) -> dict[str, Any]:
+        require_admin(password)
+        version_labels = {
+            "python": "Python 版本",
+            "c": "C 语言版本",
+            "agent": "Agent 监督版本",
+        }
+        version_summaries = []
+        group_summaries = []
+        sample_rows = []
+        for version, db in dbs.items():
+            summary = stats_summary_for_version(version, db)
+            summary["label"] = version_labels[version]
+            version_summaries.append({key: value for key, value in summary.items() if key not in ("groups", "samples")})
+            group_summaries.extend(
+                {**group, "label": version_labels[version]}
+                for group in summary["groups"]
+            )
+            sample_rows.extend(
+                {**sample, "label": version_labels[version]}
+                for sample in summary["samples"]
+            )
+        return {
+            "score_max": 30,
+            "posttest_score_max": 5,
+            "sample_scope": "normal_completed",
+            "versions": version_summaries,
+            "groups": group_summaries,
+            "samples": sample_rows,
+        }
 
     @app.get("/api/admin/sessions/{session_id}")
     def admin_get(session_id: str, password: str, version: str = "python") -> dict[str, Any]:
@@ -623,7 +762,11 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
         sup_scores = score_supervision(supervision)
         posttest_scores = score_posttest(posttest)
         session = dict(s)
+        session["is_test"] = is_test_session(session)
         session["total_duration_hms"] = seconds_to_hms(elapsed_seconds_for_session(session))
+        flags = quality_flags_for_row(row)
+        automatic_completion = automatic_completion_metadata(session, flags)
+        completion = completion_metadata(session, flags)
         return {
             "session": session,
             "questionnaire_version": normalized,
@@ -634,6 +777,9 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
             "scores": {k: v for k, v in scores.items() if k != "per_question"},
             "supervision_scores": {k: v for k, v in sup_scores.items() if k != "per_item"},
             "posttest_scores": posttest_scores,
+            "quality_flags": flags,
+            "automatic_completion": automatic_completion,
+            "completion": completion,
             "responses": row["responses"],
         }
 
@@ -660,7 +806,11 @@ def create_app(db_path: Path | None = None, admin_password: str | None = None) -
     @app.patch("/api/admin/sessions/{session_id}")
     def admin_update(session_id: str, password: str, body: dict[str, Any], version: str = "python") -> dict[str, Any]:
         require_admin(password)
-        if not db_for_version(version).admin_update_session(session_id, body):
+        try:
+            updated = db_for_version(version).admin_update_session(session_id, body)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        if not updated:
             raise HTTPException(status_code=400, detail="No valid fields to update")
         return {"ok": True}
 

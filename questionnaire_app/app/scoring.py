@@ -10,36 +10,19 @@ from .questionnaire import (
 )
 
 MIN_TOTAL_SECONDS = 5 * 60   # 5 minutes
-MIN_TASK_SECONDS = 60        # 1 minute per task
 
 
-def check_timing(task_durations: dict[int, int | None], total_seconds: int | None) -> list[str]:
-    """Return list of timing violation reasons; empty means valid."""
+def check_timing(_task_durations: dict[int, int | None], total_seconds: int | None) -> list[str]:
+    """Return timing violation reasons; empty means valid."""
     flags = []
-    if total_seconds is not None and total_seconds < MIN_TOTAL_SECONDS:
-        flags.append(f"total_time_too_short ({total_seconds}s < {MIN_TOTAL_SECONDS}s)")
-    for task_id, duration in task_durations.items():
-        if duration is not None and duration < MIN_TASK_SECONDS:
-            flags.append(f"task_{task_id}_too_short ({duration}s < {MIN_TASK_SECONDS}s)")
+    if total_seconds is not None and total_seconds <= MIN_TOTAL_SECONDS:
+        flags.append(f"total_time_too_short ({total_seconds}s <= {MIN_TOTAL_SECONDS}s)")
     return flags
 
 
 def check_response_pattern(answers: dict[str, str]) -> list[str]:
-    """Return list of pattern violation reasons; empty means valid."""
-    flags = []
-    values = list(answers.values())
-    if len(values) >= 10 and len(set(values)) == 1:
-        flags.append(f"all_same_answer ({values[0]})")
-    # Check per-task blocks of 5 questions (Q1-Q5, Q6-Q10, ...)
-    task_qids = [
-        [f"Q{i}" for i in range(start, start + 5)]
-        for start in range(1, 31, 5)
-    ]
-    for block in task_qids:
-        block_vals = [answers[q] for q in block if q in answers]
-        if len(block_vals) == 5 and len(set(block_vals)) == 1:
-            flags.append(f"task_block_all_same ({block[0]}-{block[-1]}: {block_vals[0]})")
-    return flags
+    """Response-pattern monitoring is disabled by policy."""
+    return []
 
 
 def score_answers(answers: dict[str, str]) -> dict:

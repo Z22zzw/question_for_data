@@ -4,7 +4,9 @@ import sqlite3
 from fastapi.testclient import TestClient
 from openpyxl import load_workbook
 
+from app.database import Database
 from app.main import SESSION_COOKIE_NAME, create_app
+from app.scoring import check_response_pattern, check_timing
 
 
 def make_client(tmp_path: Path) -> TestClient:
@@ -23,6 +25,9 @@ def pretest_payload(version: str = "python") -> dict:
     payload = {
         "consent": "I agree",
         "questionnaire_version": version,
+        "class_name": "计科 2201",
+        "student_name": "张三",
+        "student_id": "20220001",
         "grade_year": "Year 3",
         "major": "计算机科学与技术" if version == "c" else "计算机类",
         "programming_experience_years": "3-4",
@@ -36,8 +41,11 @@ def pretest_payload(version: str = "python") -> dict:
     return payload
 
 
-def start_session(client: TestClient):
-    response = client.post("/api/session/start", json={"agreement": "I agree"})
+def start_session(client: TestClient, test_group: str | None = None):
+    payload = {"agreement": "I agree"}
+    if test_group is not None:
+        payload["test_group"] = test_group
+    response = client.post("/api/session/start", json=payload)
     assert response.status_code == 200
     assert SESSION_COOKIE_NAME in response.cookies
     assert "httponly" in response.headers["set-cookie"].lower()
@@ -111,6 +119,18 @@ def complete_all_tasks(client: TestClient) -> None:
         assert response.status_code == 200
 
 
+def complete_all_tasks_with_same_answer(client: TestClient, answer: str) -> None:
+    for task_id, start in enumerate([1, 6, 11, 16, 21, 26], start=1):
+        response = client.post(
+            f"/api/task/{task_id}",
+            json={
+                "answers": {f"Q{i}": answer for i in range(start, start + 5)},
+                "supervision_answers": {},
+            },
+        )
+        assert response.status_code == 200
+
+
 def mark_valid_completion_times(db_path: Path, session_id: str) -> None:
     with sqlite3.connect(db_path) as conn:
         conn.execute(
@@ -146,6 +166,19 @@ def mark_session_started_at(db_path: Path, session_id: str, started_at: str) -> 
         conn.execute("UPDATE sessions SET created_at = ? WHERE id = ?", (started_at, session_id))
 
 
+def mark_short_completion_time(db_path: Path, session_id: str) -> None:
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            """
+            UPDATE sessions
+            SET created_at = '2026-01-01T00:00:00+00:00',
+                completed_at = '2026-01-01T00:02:00+00:00'
+            WHERE id = ?
+            """,
+            (session_id,),
+        )
+
+
 def admin_sessions(client: TestClient) -> list[dict]:
     response = client.get("/api/admin/sessions?password=secret&include_abandoned=true")
     assert response.status_code == 200
@@ -154,6 +187,207 @@ def admin_sessions(client: TestClient) -> list[dict]:
 
 def latest_session_id(client: TestClient) -> str:
     return admin_sessions(client)[0]["session_id"]
+
+
+def test_timing_quality_threshold_uses_total_duration_only():
+    task_durations = {
+        1: 60,
+        2: 18,
+        3: 19,
+        4: 59,
+        5: 17,
+        6: 90,
+    }
+
+    assert check_timing(task_durations, total_seconds=300) == [
+        "total_time_too_short (300s <= 300s)",
+    ]
+    assert check_timing(task_durations, total_seconds=301) == []
+    assert check_timing(
+        {
+            1: 60,
+            2: 18,
+            3: 19,
+            4: 59,
+            5: 17,
+            6: 90,
+        },
+        total_seconds=None,
+    ) == []
+
+
+def test_response_pattern_monitoring_is_disabled():
+    answers = {f"Q{i}": "A" for i in range(1, 31)}
+
+    assert check_response_pattern(answers) == []
+
+
+def test_repeated_same_answers_do_not_make_completed_session_invalid(tmp_path: Path):
+    db_path = tmp_path / "test.sqlite"
+    app = create_app(db_path=db_path, admin_password="secret")
+    client = TestClient(app)
+
+    participant = submit_pretest(client)
+    for task_id, start in enumerate([1, 6, 11, 16, 21, 26], start=1):
+        answers = {f"Q{i}": "A" for i in range(start, start + 5)}
+        response = client.post(
+            f"/api/task/{task_id}",
+            json={"answers": answers, "supervision_answers": {}},
+        )
+        assert response.status_code == 200
+    assert client.post("/api/posttest", json=posttest_payload()).status_code == 200
+
+    mark_valid_completion_times(db_path, latest_session_id(client))
+    row = admin_sessions(client)[0]
+
+    assert row["participant_id"] == participant["participant_id"]
+    assert row["class_name"] == "计科 2201"
+    assert row["student_name"] == "张三"
+    assert row["student_id"] == "20220001"
+    assert row["valid"] is True
+    assert row["quality_flags"] == []
+    assert row["completion_bucket"] == "normal_completed"
+
+
+def test_database_migrates_completion_override_columns(tmp_path: Path):
+    db_path = tmp_path / "legacy.sqlite"
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            """
+            CREATE TABLE sessions (
+                id TEXT PRIMARY KEY,
+                participant_id INTEGER UNIQUE,
+                group_name TEXT NOT NULL,
+                current_task INTEGER NOT NULL,
+                pretest_json TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                pretest_submitted_at TEXT NOT NULL,
+                posttest_json TEXT,
+                posttest_submitted_at TEXT,
+                completed_at TEXT,
+                abandoned_at TEXT,
+                timeout_at TEXT
+            )
+            """
+        )
+
+    Database(db_path)
+
+    with sqlite3.connect(db_path) as conn:
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(sessions)")}
+    assert {
+        "is_test",
+        "completion_override",
+        "completion_override_note",
+        "completion_override_updated_at",
+    } <= columns
+
+
+def test_admin_can_override_quality_failure_and_restore_automatic_completion(tmp_path: Path):
+    db_path = tmp_path / "test.sqlite"
+    app = create_app(db_path=db_path, admin_password="secret")
+    client = TestClient(app)
+
+    participant = submit_pretest(client)
+    complete_all_tasks(client)
+    assert client.post("/api/posttest", json=posttest_payload()).status_code == 200
+    session_id = latest_session_id(client)
+    mark_short_completion_time(db_path, session_id)
+
+    automatic = admin_sessions(client)[0]
+    assert automatic["completion_bucket"] == "incomplete"
+    assert automatic["incomplete_reason"] == "quality_failed"
+    assert automatic["automatic_incomplete_reason"] == "quality_failed"
+    assert automatic["valid"] is False
+    assert automatic["completion_source"] == "auto"
+
+    update = client.patch(
+        f"/api/admin/sessions/{session_id}?password=secret",
+        json={"completion_override": "normal_completed", "completion_override_note": "人工复核通过"},
+    )
+    assert update.status_code == 200
+
+    overridden = admin_sessions(client)[0]
+    assert overridden["participant_id"] == participant["participant_id"]
+    assert overridden["completion_bucket"] == "normal_completed"
+    assert overridden["incomplete_reason"] is None
+    assert overridden["automatic_incomplete_reason"] == "quality_failed"
+    assert overridden["quality_flags"] == ["total_time_too_short (120s <= 300s)"]
+    assert overridden["valid"] is True
+    assert overridden["automatic_valid"] is False
+    assert overridden["completion_source"] == "manual"
+    assert overridden["completion_override"] == "normal_completed"
+    assert overridden["completion_override_note"] == "人工复核通过"
+    assert overridden["completion_override_updated_at"]
+
+    detail = client.get(f"/api/admin/sessions/{session_id}?password=secret").json()
+    assert detail["automatic_completion"]["incomplete_reason"] == "quality_failed"
+    assert detail["completion"] == {
+        "completion_bucket": "normal_completed",
+        "incomplete_reason": None,
+        "completion_source": "manual",
+    }
+
+    export_response = client.get("/api/admin/export?password=secret")
+    export_path = tmp_path / "manual_override_export.xlsx"
+    export_path.write_bytes(export_response.content)
+    sheet = load_workbook(export_path).active
+    headers = [cell.value for cell in sheet[1]]
+    row = dict(zip(headers, [cell.value for cell in sheet[2]]))
+    assert row["participant_id"] == participant["participant_id"]
+    assert row["completion_override"] == "normal_completed"
+    assert row["completion_override_note"] == "人工复核通过"
+
+    stats = client.get("/api/admin/stats?password=secret").json()
+    python_stats = next(row for row in stats["versions"] if row["version"] == "python")
+    assert python_stats["sample_count"] == 1
+
+    reset = client.patch(
+        f"/api/admin/sessions/{session_id}?password=secret",
+        json={"completion_override": "auto", "completion_override_note": ""},
+    )
+    assert reset.status_code == 200
+    restored = admin_sessions(client)[0]
+    assert restored["completion_bucket"] == "incomplete"
+    assert restored["incomplete_reason"] == "quality_failed"
+    assert restored["completion_source"] == "auto"
+    assert restored["completion_override"] is None
+
+
+def test_admin_can_override_timeout_as_normal_completion(tmp_path: Path):
+    db_path = tmp_path / "test.sqlite"
+    app = create_app(db_path=db_path, admin_password="secret")
+    client = TestClient(app)
+
+    submit_pretest(client)
+    session_id = latest_session_id(client)
+    mark_session_started_at(db_path, session_id, "2026-01-01T00:00:00+00:00")
+    assert client.get("/api/session/current").json()["status"] == "timeout"
+
+    update = client.patch(
+        f"/api/admin/sessions/{session_id}?password=secret",
+        json={"completion_override": "normal_completed", "completion_override_note": "人工确认可用"},
+    )
+    assert update.status_code == 200
+
+    overridden = admin_sessions(client)[0]
+    assert overridden["completion_bucket"] == "normal_completed"
+    assert overridden["automatic_incomplete_reason"] == "timeout"
+    assert overridden["completion_source"] == "manual"
+    assert overridden["valid"] is True
+
+
+def test_admin_rejects_invalid_completion_override(tmp_path: Path):
+    client = make_client(tmp_path)
+    submit_pretest(client)
+
+    response = client.patch(
+        f"/api/admin/sessions/{latest_session_id(client)}?password=secret",
+        json={"completion_override": "made_up_status"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Unsupported completion override"
 
 
 def test_pretest_assigns_hidden_balanced_groups(tmp_path: Path):
@@ -176,6 +410,75 @@ def test_pretest_assigns_hidden_balanced_groups(tmp_path: Path):
     groups = [row["group"] for row in sessions]
     assert groups.count("A") == 2
     assert groups.count("B") == 2
+
+
+def test_test_name_can_choose_group_and_is_excluded_from_samples(tmp_path: Path):
+    db_path = tmp_path / "test.sqlite"
+    app = create_app(db_path=db_path, admin_password="secret")
+    test_client = TestClient(app)
+
+    test_payload = pretest_payload()
+    test_payload["student_name"] = " test "
+    pretest_response = test_client.post("/api/pretest", json=test_payload)
+    assert pretest_response.status_code == 200
+    assert pretest_response.json()["is_test"] is True
+    assert pretest_response.json()["participant_id"] is None
+
+    current_notice = test_client.get("/api/session/current").json()
+    assert current_notice["status"] == "notice"
+    assert current_notice["is_test"] is True
+
+    start = start_session(test_client, test_group="B").json()
+    assert start["next_stage"] == "task"
+
+    task = test_client.get("/api/task/1").json()
+    assert task["supervision_card"] is not None
+    complete_all_tasks(test_client)
+    assert test_client.post("/api/posttest", json=posttest_payload()).status_code == 200
+    test_session_id = latest_session_id(test_client)
+    mark_valid_completion_times(db_path, test_session_id)
+
+    real_a = TestClient(app)
+    real_b = TestClient(app)
+    real_a_data = submit_pretest(real_a)
+    real_b_data = submit_pretest(real_b)
+
+    sessions = admin_sessions(test_client)
+    test_row = next(row for row in sessions if row["is_test"])
+    real_rows = [row for row in sessions if not row["is_test"]]
+
+    assert test_row["student_name"] == "test"
+    assert test_row["group"] == "B"
+    assert test_row["completion_bucket"] == "normal_completed"
+    assert test_row["valid"] is False
+    assert test_row["sample_included"] is False
+    assert real_a_data["participant_id"] == 1
+    assert real_b_data["participant_id"] == 2
+    assert [row["group"] for row in sorted(real_rows, key=lambda row: row["participant_id"])] == ["A", "B"]
+
+    stats = test_client.get("/api/admin/stats?password=secret").json()
+    python_stats = next(row for row in stats["versions"] if row["version"] == "python")
+    assert python_stats["sample_count"] == 0
+    assert stats["samples"] == []
+
+    export_response = test_client.get("/api/admin/export?password=secret")
+    export_path = tmp_path / "test_excluded_export.xlsx"
+    export_path.write_bytes(export_response.content)
+    sheet = load_workbook(export_path).active
+    assert sheet.max_row == 1
+
+
+def test_non_test_session_cannot_choose_group_on_agreement(tmp_path: Path):
+    client = make_client(tmp_path)
+
+    pretest_response = client.post("/api/pretest", json=pretest_payload())
+    assert pretest_response.status_code == 200
+    assert pretest_response.json()["is_test"] is False
+
+    response = client.post("/api/session/start", json={"agreement": "I agree", "test_group": "B"})
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Group choice is only available for test questionnaire"
 
 
 def test_python_and_c_versions_use_isolated_databases(tmp_path: Path):
@@ -385,6 +688,9 @@ def test_scoring_and_excel_export(tmp_path: Path):
     assert data["post_agent_supervision_score"] == 4.38
     assert "total_duration_hms" in headers
     assert "task1_duration_hms" in headers
+    assert "class_name" not in headers
+    assert "student_name" not in headers
+    assert "student_id" not in headers
     assert "start_time" not in headers
     assert "pretest_submit_time" not in headers
     assert "end_time" not in headers
@@ -430,8 +736,12 @@ def test_admin_export_uses_selected_version_and_c_omits_numpy(tmp_path: Path):
 
     assert "numpy_familiarity" in python_headers
     assert "numpy_familiarity" not in c_headers
+    assert "python_familiarity" in python_headers
+    assert "python_familiarity" not in c_headers
+    assert "c_language_familiarity" in c_headers
     assert python_row["participant_id"] == python_pretest["participant_id"]
     assert c_row["participant_id"] == c_pretest["participant_id"]
+    assert c_row["c_language_familiarity"] == "4"
     assert python_row["questionnaire_version"] == "python"
     assert c_row["questionnaire_version"] == "c"
 
@@ -467,6 +777,50 @@ def test_admin_export_uses_agent_version_database(tmp_path: Path):
     assert row["participant_id"] == agent_pretest["participant_id"]
     assert row["participant_id"] != python_pretest["participant_id"] or row["questionnaire_version"] == "agent"
     assert row["questionnaire_version"] == "agent"
+
+
+def test_admin_stats_reports_version_and_ab_group_averages(tmp_path: Path):
+    db_path = tmp_path / "test.sqlite"
+    app = create_app(db_path=db_path, admin_password="secret")
+    client = TestClient(app)
+
+    submit_pretest(client, "python")
+    complete_all_tasks(client)
+    assert client.post("/api/posttest", json=posttest_payload()).status_code == 200
+    python_a_session_id = latest_session_id(client)
+    mark_valid_completion_times(db_path, python_a_session_id)
+
+    submit_pretest(client, "python")
+    complete_all_tasks_with_same_answer(client, "A")
+    assert client.post("/api/posttest", json=posttest_payload()).status_code == 200
+    python_b_session_id = latest_session_id(client)
+    mark_valid_completion_times(db_path, python_b_session_id)
+
+    submit_pretest(client, "c")
+    complete_all_tasks(client)
+    assert client.post("/api/posttest", json=posttest_payload()).status_code == 200
+    c_session_id = client.get("/api/admin/sessions?password=secret&version=c").json()[0]["session_id"]
+    mark_valid_completion_times(db_path.with_name("test_c.sqlite"), c_session_id)
+
+    response = client.get("/api/admin/stats?password=secret")
+    assert response.status_code == 200
+    data = response.json()
+    versions = {row["version"]: row for row in data["versions"]}
+    groups = {(row["version"], row["group"]): row for row in data["groups"]}
+    samples = {(row["version"], row["participant_id"]): row for row in data["samples"]}
+
+    assert data["sample_scope"] == "normal_completed"
+    assert versions["python"]["sample_count"] == 2
+    assert versions["python"]["average_total_score"] == 21.5
+    assert versions["c"]["sample_count"] == 1
+    assert versions["c"]["average_total_score"] == 30
+    assert versions["agent"]["sample_count"] == 0
+    assert groups[("python", "A")]["average_total_score"] == 30
+    assert groups[("python", "B")]["average_total_score"] == 13
+    assert len(data["samples"]) == 3
+    assert samples[("python", 1)]["class_name"] == "计科 2201"
+    assert samples[("python", 1)]["student_name"] == "张三"
+    assert samples[("python", 1)]["student_id"] == "20220001"
 
 
 def test_timeout_marks_session_blocks_submissions_and_reports_duration(tmp_path: Path):

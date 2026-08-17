@@ -45,11 +45,11 @@ const i18n = {
       },
       {
         title: "What will happen if you participate?",
-        body: "You will complete a pretest, six formal tasks, and a posttest. The formal response stage is limited to 40 minutes.",
+        body: "You will complete 8-9 pretest questions (Python: 9; C/Agent: 8), six formal tasks with 5 formal questions each (30 task questions), and 8 posttest questions. The core questionnaire has 47 questions for Python and 46 for C/Agent. If a supervision card appears on Tasks 1 and 2, complete those 10 additional checks as shown on the page.",
       },
       {
         title: "Data and Rules",
-        body: "The study records responses, progress, group assignment, submission time, and response duration for academic research and statistical analysis only. Please answer independently without AI coding agent tools, search engines, coding assistants, or help from others.",
+        body: "The study records responses, progress, group assignment, submission time, and response duration for academic research and statistical analysis only. Please answer independently without AI coding agent tools, search engines, coding assistants, or help from others. The pretest is not timed; after you agree and start, the six tasks and posttest share a 40-minute limit.",
       },
       {
         title: "If you are no longer interested",
@@ -57,12 +57,19 @@ const i18n = {
       },
     ],
     noticeRules: [
-      "This questionnaire includes a pretest, formal tasks, and a posttest. The total formal response time is limited to 40 minutes. Timing starts after you click “Agree and Start”; page refreshes, closing the page, disconnections, and re-entry all count toward the total time.",
+      "Question count: pretest 8-9 questions (Python: 9; C/Agent: 8), task section 6 tasks × 5 formal questions = 30 questions, posttest 8 questions. Core total: Python 47 questions; C/Agent 46 questions. If a supervision card appears, answer 10 extra card checks on Tasks 1 and 2.",
+      "Time limit: the pretest before this notice is not timed. Timing starts after you click “Agree and Start”; the six tasks and posttest must be submitted within 40 minutes. Page refreshes, closing the page, disconnections, and re-entry all count toward the total time.",
       "Please complete the questionnaire independently. Do not use AI coding agent tools, search engines, coding assistants, or help from others to gain answer-related assistance.",
       "This questionnaire collects response data, progress, group assignment, submission time, and response duration. The data is used only for academic research and statistical analysis, and will not be used for commercial purposes or personal identification.",
-      "If the response time exceeds 40 minutes, the system will automatically stop this attempt. The data from this attempt will not be included as a valid sample. You may return to the home page and restart.",
+      "An attempt will be treated as invalid if you use prohibited tools or outside help, exceed 40 minutes, leave required questions incomplete, or submit unrealistically fast: total time after starting at or under 5 minutes. Repeating the same option does not by itself count as a quality abnormality.",
     ],
     noticeAgreement: "I have read and agree to the research notice and questionnaire rules",
+    testModeTitle: "Test Questionnaire",
+    testModeHint: 'The pretest name "test" enables test mode. Choose which group to preview; this response is excluded from real sample counts, statistics, and exports.',
+    testGroupChoice: "Test group",
+    testGroupA: "Group A",
+    testGroupB: "Group B",
+    testGroupRequired: "Please choose a test group.",
     noticeStart: "Agree and Start",
     noticeCancel: "Cancel",
     notStarted: "Not started",
@@ -112,6 +119,9 @@ const i18n = {
     requiredQuestionWarning: "Please answer this question before submitting.",
     resetHome: "New Session",
     fields: {
+      class_name: "Class",
+      student_name: "Name",
+      student_id: "Student ID",
       questionnaire_version: "Questionnaire Version",
       grade_year: "Grade Year",
       major: "Major",
@@ -155,11 +165,11 @@ const i18n = {
       },
       {
         title: "你会经历哪些步骤？",
-        body: "你会完成开始前的小问卷、6 个正式任务和结束后的小问卷。正式任务限时 40 分钟。",
+        body: "你会完成前测 8-9 道题（Python 版本 9 道；C 语言/Agent 版本 8 道）、6 个正式任务（每个任务 5 道正式题，共 30 道）和后测 8 道题。核心问卷总题量为：Python 版本 47 道，C 语言/Agent 版本 46 道。如果任务 1 和任务 2 页面出现监督检查卡，还需要按页面提示额外完成 10 道检查卡题。",
       },
       {
         title: "数据与规则",
-        body: "系统会记录你的答案、进度、分组、提交时间和用时，仅用于学术研究和统计分析。请独立完成，不使用人工智能编程智能体(AI coding agent)工具、搜索引擎、代码助手或他人帮助。",
+        body: "系统会记录你的答案、进度、分组、提交时间和用时，仅用于学术研究和统计分析。请独立完成，不使用人工智能编程智能体(AI coding agent)工具、搜索引擎、代码助手或他人帮助。前测不计时；点击同意并开始后，6 个正式任务和后测合计限时 40 分钟。",
       },
       {
         title: "如果你不想继续参加",
@@ -167,12 +177,19 @@ const i18n = {
       },
     ],
     noticeRules: [
-      "本问卷包含开始前的小问卷、正式任务和结束后的小问卷。正式任务总时长为 40 分钟。点击“同意并开始作答”后开始计时，刷新、关闭页面、断网或重新进入都会继续计入时间。",
+      "题量：前测 8-9 道题（Python 版本 9 道；C 语言/Agent 版本 8 道），任务部分 6 个任务 × 每个 5 道正式题 = 30 道，后测 8 道。核心总题量：Python 版本 47 道；C 语言/Agent 版本 46 道。如果页面出现监督检查卡，还需在任务 1 和任务 2 额外完成 10 道检查卡题。",
+      "时间：本告知书前的前测不计时。点击“同意并开始作答”后开始计时，6 个正式任务和后测必须在 40 分钟内提交；刷新、关闭页面、断网或重新进入都会继续计入时间。",
       "请独立完成作答。不要使用人工智能编程智能体(AI coding agent)工具、搜索引擎、代码助手或他人帮助来寻找答案。",
       "系统会收集你的答案、进度、分组、提交时间和作答用时。这些数据只用于学术研究和统计分析，不用于商业用途，也不会用来识别你的个人身份。",
-      "如果正式任务超过 40 分钟，系统会自动结束本次作答，本次数据不会作为有效样本。你可以回到首页重新开始。",
+      "以下情况会被视为违规或无效样本：使用被禁止的工具或他人帮助；超过 40 分钟；必答题未完成；作答明显过快，即开始后到提交后测总时长不超过 5 分钟。连续选择同一个选项本身不会再计入质量异常。",
     ],
     noticeAgreement: "我已阅读并同意研究说明与作答规则",
+    testModeTitle: "测试问卷",
+    testModeHint: "前测姓名填写 test 会进入测试模式。请选择要预览的 A/B 组；本次作答不会计入正式样本、统计或导出。",
+    testGroupChoice: "测试分组",
+    testGroupA: "A 组",
+    testGroupB: "B 组",
+    testGroupRequired: "请选择测试分组。",
     noticeStart: "同意并开始作答",
     noticeCancel: "取消",
     notStarted: "未开始",
@@ -222,6 +239,9 @@ const i18n = {
     requiredQuestionWarning: "请先回答这个问题。",
     resetHome: "回到首页",
     fields: {
+      class_name: "班级",
+      student_name: "姓名",
+      student_id: "学号",
       questionnaire_version: "任务版本",
       grade_year: "年级",
       major: "专业",
@@ -324,6 +344,8 @@ const state = {
   expiresAt: null,
   timeLimitSeconds: 40 * 60,
   enabledVersions: new Set(["python", "c", "agent"]),
+  isTest: false,
+  testGroup: "A",
 };
 
 let timerInterval = null;
@@ -333,6 +355,11 @@ let lastScrollY = window.scrollY;
 
 function updateTopbarVisibility() {
   if (!topbar) return;
+  if (window.matchMedia("(max-width: 760px)").matches) {
+    topbar.classList.remove("is-floating", "is-hidden");
+    lastScrollY = Math.max(0, window.scrollY);
+    return;
+  }
   const currentY = Math.max(0, window.scrollY);
   const threshold = topbar.offsetHeight + 24;
   const scrollingDown = currentY > lastScrollY + 4;
@@ -423,6 +450,9 @@ function renderIntroModal() {
 }
 
 const pretestFields = [
+  ["class_name", "text"],
+  ["student_name", "text"],
+  ["student_id", "text"],
   ["questionnaire_version", "select"],
   ["grade_year", "select"],
   ["major", "select"],
@@ -679,6 +709,7 @@ async function retryPending() {
     const result = await api(pending.path, { method: pending.method, body: JSON.stringify(pending.body) });
     localStorage.removeItem("questionnaire_pending_submit");
     if (pending.kind === "pretest") {
+      state.isTest = Boolean(result.is_test);
       state.status = "notice";
       state.nextStage = result.next_stage;
       state.nextTask = result.next_task;
@@ -730,6 +761,24 @@ function renderResearchNotice() {
       `
     )
     .join("");
+  const testGroupChoice = state.isTest
+    ? `
+      <section class="modal-section">
+        <h3>${t("testModeTitle")}</h3>
+        <p>${t("testModeHint")}</p>
+        <div class="options test-group-options" role="radiogroup" aria-label="${escapeHtml(t("testGroupChoice"))}">
+          <label class="option">
+            <input type="radio" name="test_group" value="A" required ${state.testGroup === "B" ? "" : "checked"} />
+            <span>${t("testGroupA")}</span>
+          </label>
+          <label class="option">
+            <input type="radio" name="test_group" value="B" required ${state.testGroup === "B" ? "checked" : ""} />
+            <span>${t("testGroupB")}</span>
+          </label>
+        </div>
+      </section>
+    `
+    : "";
   renderModal(`
     <form id="noticeForm" class="modal-form">
       <div class="modal-header">
@@ -741,6 +790,7 @@ function renderResearchNotice() {
       <ol class="notice-list">
         ${t("noticeRules").map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
       </ol>
+      ${testGroupChoice}
       <label class="agreement">
         <input type="checkbox" name="agreement" value="I agree" required />
         <span>${t("noticeAgreement")}</span>
@@ -754,10 +804,25 @@ function renderResearchNotice() {
   `);
 
   document.getElementById("noticeCancel").onclick = resetToHome;
+  document.querySelectorAll('input[name="test_group"]').forEach((input) => {
+    input.addEventListener("change", () => {
+      state.testGroup = input.value;
+    });
+  });
   document.getElementById("noticeForm").addEventListener("submit", async (event) => {
     event.preventDefault();
     try {
-      const result = await api("/api/session/start", { method: "POST", body: JSON.stringify({ agreement: "I agree" }) });
+      const body = { agreement: "I agree" };
+      if (state.isTest) {
+        const testGroup = new FormData(event.currentTarget).get("test_group");
+        if (!testGroup) {
+          document.getElementById("error").textContent = t("testGroupRequired");
+          return;
+        }
+        state.testGroup = testGroup;
+        body.test_group = testGroup;
+      }
+      const result = await api("/api/session/start", { method: "POST", body: JSON.stringify(body) });
       state.status = "in_progress";
       state.nextStage = result.next_stage;
       state.nextTask = result.next_task;
@@ -860,6 +925,7 @@ function renderPretest() {
     try {
       const result = await api(pending.path, { method: pending.method, body: JSON.stringify(payload) });
       localStorage.removeItem(draftKey("pretest"));
+      state.isTest = Boolean(result.is_test);
       state.status = "notice";
       state.nextStage = result.next_stage;
       state.nextTask = result.next_task;
@@ -1153,6 +1219,8 @@ async function resetToHome() {
   state.status = "none";
   state.nextStage = null;
   state.nextTask = 0;
+  state.isTest = false;
+  state.testGroup = "A";
   state.expiresAt = null;
   networkStatus.textContent = "";
   renderPretest();
@@ -1162,6 +1230,7 @@ function applyCurrentSession(current) {
   state.status = current.status;
   state.nextStage = current.next_stage || null;
   state.nextTask = current.next_task || null;
+  state.isTest = Boolean(current.is_test);
   if (["in_progress", "posttest"].includes(current.status)) {
     setTimerFromSession(current);
   }

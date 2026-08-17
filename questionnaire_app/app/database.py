@@ -7,6 +7,18 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+COMPLETION_OVERRIDE_VALUES = {
+    "normal_completed",
+    "quality_failed",
+    "timeout",
+    "pending_posttest",
+    "in_progress",
+}
+
+
+def is_test_pretest(pretest: dict[str, Any]) -> bool:
+    return str(pretest.get("student_name", "")).strip().lower() == "test"
+
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -31,6 +43,7 @@ class Database:
                     id TEXT PRIMARY KEY,
                     participant_id INTEGER UNIQUE,
                     group_name TEXT NOT NULL,
+                    is_test INTEGER NOT NULL DEFAULT 0,
                     current_task INTEGER NOT NULL,
                     pretest_json TEXT NOT NULL,
                     created_at TEXT NOT NULL,
@@ -39,7 +52,10 @@ class Database:
                     posttest_submitted_at TEXT,
                     completed_at TEXT,
                     abandoned_at TEXT,
-                    timeout_at TEXT
+                    timeout_at TEXT,
+                    completion_override TEXT,
+                    completion_override_note TEXT,
+                    completion_override_updated_at TEXT
                 );
 
                 CREATE TABLE IF NOT EXISTS task_starts (
@@ -66,6 +82,8 @@ class Database:
             if "participant_id" not in columns:
                 conn.execute("ALTER TABLE sessions ADD COLUMN participant_id INTEGER")
                 conn.execute("UPDATE sessions SET participant_id = rowid WHERE participant_id IS NULL")
+            if "is_test" not in columns:
+                conn.execute("ALTER TABLE sessions ADD COLUMN is_test INTEGER NOT NULL DEFAULT 0")
             if "posttest_json" not in columns:
                 conn.execute("ALTER TABLE sessions ADD COLUMN posttest_json TEXT")
             if "posttest_submitted_at" not in columns:
@@ -74,34 +92,60 @@ class Database:
                 conn.execute("ALTER TABLE sessions ADD COLUMN abandoned_at TEXT")
             if "timeout_at" not in columns:
                 conn.execute("ALTER TABLE sessions ADD COLUMN timeout_at TEXT")
+            if "completion_override" not in columns:
+                conn.execute("ALTER TABLE sessions ADD COLUMN completion_override TEXT")
+            if "completion_override_note" not in columns:
+                conn.execute("ALTER TABLE sessions ADD COLUMN completion_override_note TEXT")
+            if "completion_override_updated_at" not in columns:
+                conn.execute("ALTER TABLE sessions ADD COLUMN completion_override_updated_at TEXT")
+            rows = conn.execute(
+                "SELECT id, pretest_json FROM sessions WHERE COALESCE(is_test, 0) = 0"
+            ).fetchall()
+            for row in rows:
+                try:
+                    pretest = json.loads(row["pretest_json"])
+                except json.JSONDecodeError:
+                    continue
+                if is_test_pretest(pretest):
+                    conn.execute("UPDATE sessions SET is_test = 1, participant_id = NULL WHERE id = ?", (row["id"],))
+
+    def next_participant_id(self, conn: sqlite3.Connection) -> int:
+        return conn.execute(
+            """
+            SELECT COALESCE(MAX(participant_id), 0) + 1 AS next_id
+            FROM sessions
+            WHERE COALESCE(is_test, 0) = 0
+            """
+        ).fetchone()["next_id"]
 
     def choose_group(self) -> str:
         with self.connect() as conn:
             rows = conn.execute(
-                "SELECT group_name, COUNT(*) AS c FROM sessions WHERE abandoned_at IS NULL GROUP BY group_name"
+                """
+                SELECT group_name, COUNT(*) AS c
+                FROM sessions
+                WHERE abandoned_at IS NULL AND COALESCE(is_test, 0) = 0
+                GROUP BY group_name
+                """
             ).fetchall()
         counts = {"A": 0, "B": 0}
         for row in rows:
             counts[row["group_name"]] = row["c"]
         return "A" if counts["A"] <= counts["B"] else "B"
 
-    def create_session(self, pretest: dict[str, Any]) -> dict[str, Any]:
+    def create_session(self, pretest: dict[str, Any], is_test: bool = False) -> dict[str, Any]:
         session_id = uuid.uuid4().hex
-        group = self.choose_group()
+        group = "A" if is_test else self.choose_group()
         now = utc_now()
         with self.connect() as conn:
-            participant_id = (
-                conn.execute("SELECT COALESCE(MAX(participant_id), 0) + 1 AS next_id FROM sessions").fetchone()[
-                    "next_id"
-                ]
-            )
+            participant_id = None if is_test else self.next_participant_id(conn)
             conn.execute(
                 """
                 INSERT INTO sessions
-                (id, participant_id, group_name, current_task, pretest_json, created_at, pretest_submitted_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                (id, participant_id, group_name, is_test, current_task, pretest_json, created_at, pretest_submitted_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (session_id, participant_id, group, 0, json.dumps(pretest, ensure_ascii=False), now, now),
+                (session_id, participant_id, group, int(is_test), 0, json.dumps(pretest, ensure_ascii=False), now, now),
             )
         return {
             "session_id": session_id,
@@ -111,7 +155,7 @@ class Database:
             "next_stage": "notice",
         }
 
-    def start_session(self, session_id: str, agreement: str) -> dict[str, Any]:
+    def start_session(self, session_id: str, agreement: str, test_group: str | None = None) -> dict[str, Any]:
         now = utc_now()
         with self.connect() as conn:
             session = conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,)).fetchone()
@@ -127,20 +171,29 @@ class Database:
                     "next_task": session["current_task"] if session["current_task"] <= 6 else None,
                     "next_stage": "posttest" if session["current_task"] > 6 else "task",
                 }
+            group = session["group_name"]
+            if session["is_test"]:
+                if test_group not in ("A", "B"):
+                    raise ValueError("Test group must be A or B")
+                group = test_group
+            elif test_group is not None:
+                raise ValueError("Group choice is only available for test questionnaire")
             pretest = decode_json(session["pretest_json"])
             pretest["research_notice_agreement"] = agreement
+            if session["is_test"]:
+                pretest["test_group_choice"] = group
             conn.execute(
                 """
                 UPDATE sessions
-                SET pretest_json = ?, created_at = ?, current_task = 1
+                SET pretest_json = ?, created_at = ?, group_name = ?, current_task = 1
                 WHERE id = ?
                 """,
-                (json.dumps(pretest, ensure_ascii=False), now, session_id),
+                (json.dumps(pretest, ensure_ascii=False), now, group, session_id),
             )
         return {
             "session_id": session_id,
             "participant_id": session["participant_id"],
-            "group": session["group_name"],
+            "group": group,
             "next_task": 1,
             "next_stage": "task",
         }
@@ -167,7 +220,7 @@ class Database:
                 (timeout_at, session_id),
             )
 
-    def save_pretest(self, session_id: str, pretest: dict[str, Any]) -> dict[str, Any]:
+    def save_pretest(self, session_id: str, pretest: dict[str, Any], is_test: bool = False) -> dict[str, Any]:
         submitted_at = utc_now()
         with self.connect() as conn:
             session = conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,)).fetchone()
@@ -177,15 +230,23 @@ class Database:
                 raise ValueError("Pretest already submitted")
             if session["abandoned_at"] or session["timeout_at"]:
                 raise ValueError("Session is not active")
+            participant_id = session["participant_id"]
+            group = session["group_name"]
+            if is_test:
+                participant_id = None
+                group = "A"
+            elif session["is_test"] or participant_id is None:
+                participant_id = self.next_participant_id(conn)
+                group = self.choose_group()
             conn.execute(
                 """
                 UPDATE sessions
-                SET pretest_json = ?, pretest_submitted_at = ?, current_task = 0
+                SET participant_id = ?, group_name = ?, is_test = ?, pretest_json = ?, pretest_submitted_at = ?, current_task = 0
                 WHERE id = ?
                 """,
-                (json.dumps(pretest, ensure_ascii=False), submitted_at, session_id),
+                (participant_id, group, int(is_test), json.dumps(pretest, ensure_ascii=False), submitted_at, session_id),
             )
-        return {"next_task": None, "next_stage": "notice"}
+        return {"participant_id": participant_id, "next_task": None, "next_stage": "notice"}
 
     def mark_task_started(self, session_id: str, task_id: int) -> None:
         with self.connect() as conn:
@@ -282,6 +343,20 @@ class Database:
     def admin_update_session(self, session_id: str, updates: dict[str, Any]) -> bool:
         allowed = {"group_name", "current_task"}
         fields = {k: v for k, v in updates.items() if k in allowed}
+        if "completion_override" in updates:
+            override = updates["completion_override"]
+            if override in ("", "auto"):
+                override = None
+            if override is not None and override not in COMPLETION_OVERRIDE_VALUES:
+                raise ValueError("Unsupported completion override")
+            fields["completion_override"] = override
+            fields["completion_override_updated_at"] = utc_now()
+        if "completion_override_note" in updates:
+            note = updates["completion_override_note"]
+            if note is not None and not isinstance(note, str):
+                raise ValueError("Completion override note must be text")
+            fields["completion_override_note"] = (note.strip() or None) if isinstance(note, str) else None
+            fields.setdefault("completion_override_updated_at", utc_now())
         if not fields:
             return False
         set_clause = ", ".join(f"{k} = ?" for k in fields)
